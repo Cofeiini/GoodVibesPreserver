@@ -1,0 +1,16 @@
+{
+  "name": "goodvibespreserver",
+  "version": "1.0.0",
+  "description": "Browser extension that blocks unpleasant content",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/firefox": "^0.0.31",
+    "@types/firefox-webext-browser": "^111.0.1"
+  }
+}

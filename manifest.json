@@ -13,6 +13,7 @@
     "default_popup": "popup/popup.html"
   },
   "permissions": [
+    "<all_urls>",
     "tabs",
     "webRequest",
     "webRequestBlocking",
@@ -21,7 +22,7 @@
   ],
     
   "background": {
-    "scripts": ["./scripts/background/background.js"],
+    "scripts": ["scripts/background/background.js"],
     "persistent": true
   }
 }
