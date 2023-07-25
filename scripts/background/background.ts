@@ -1,31 +1,28 @@
-let blockedUrls : string[] = ["facebook.com","example.org"]
+import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
+import BlockingResponse = browser.webRequest.BlockingResponse;
+import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
 
-browser.runtime.onInstalled.addListener(details => {
-    browser.storage.local.set({
-        blockedUrls: blockedUrls
-    })
-})
+let blockedUrls : string[] = [ "facebook.com", "example.com", "example.org" ];
 
-browser.storage.local.get(data =>{
-    if(data.blockedUrls)
-    {
-        blockedUrls = data.blockedUrls;
-    }
-})
+function handleRequest(details: _OnBeforeRequestDetails) : BlockingResponse | Promise<BlockingResponse> | void {
+    const filter: browser.webRequest.StreamFilter = browser.webRequest.filterResponseData(details.requestId);
+    const decoder: TextDecoder = new TextDecoder("utf-8");
+    const encoder: TextEncoder = new TextEncoder();
 
-browser.storage.onChanged.addListener(changedData =>{
-    blockedUrls = changedData.blockedUrls.newValue;
-})
+    filter.ondata = (event: _StreamFilterOndataEvent) => {
+        const str: string = decoder.decode(event.data, { stream: true });
 
-browser.webRequest.onBeforeRequest.addListener(handleRequest,{urls: ["<all_urls>"]});
+        const url : URL = new URL(details.url)
+        if(blockedUrls.includes(url.hostname)) {
+            filter.write(encoder.encode("Blocking test"));
+        } else {
+            filter.write(encoder.encode(str));
+        }
 
-function handleRequest(requestInfo : browser.webRequest._OnBeforeRequestDetails) : Object
-{
-    const url : URL = new URL(requestInfo.url)
-    if(blockedUrls.includes(url.hostname))
-    {
-        return {type:"http",host:"127.0.0.1",port:8080};
-    }
+        filter.disconnect();
+    };
 
-    return {type: "direct"}
+    return {};
 }
+
+browser.webRequest.onBeforeRequest.addListener(handleRequest,{ urls: [ "<all_urls>" ], types: [ "main_frame" ] }, [ "blocking" ]);
