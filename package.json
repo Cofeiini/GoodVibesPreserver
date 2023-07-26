@@ -10,7 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/firefox": "^0.0.31",
     "@types/firefox-webext-browser": "^111.0.1"
+  },
+  "devDependencies": {
+    "@types/firefox": "^0.0.31"
   }
 }
