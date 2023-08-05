@@ -1,19 +1,13 @@
 import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
-import * as dotenv from "dotenv"
-
-dotenv.config({path: `.../.env`})
-
-const token = process.env.TOKEN;
+const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=test";
 
 interface urlFilter
 {
     url: RegExp,
     tags:string[],
 }
-
-let urlsData : urlFilter[] = [{url:/^facebook\.[a-z]{2,}$/,tags:["sus"]},{url:/^xvideos\.[a-z]{2,}$/,tags:["sus"]},{url:/^example\.[a-z]{2,}$/,tags:["sus"]}];
 
 let db : IDBDatabase;
 const dbRequest : IDBOpenDBRequest = window.indexedDB.open("filterDatabase",2);
@@ -32,20 +26,22 @@ dbRequest.onerror = (event) => {
     console.log((event.target as IDBRequest).error)
 }
 
-function storeUrlData()
+async function storeUrlData()
 {
+
+    const response = await fetch(filtersUrl,{
+        headers:{
+            Authorization:`token (TOKEN)`
+        }
+    })
+    const responseJSON = await response.json();
+    const filtersBase64 : string = responseJSON.content;
+    const filtersString : string = atob(filtersBase64);
+    const IDBFilters : urlFilter[] = JSON.parse(filtersString);
     const transaction : IDBTransaction = db.transaction(['filterList'],'readwrite');
     const storeObject : IDBObjectStore = transaction.objectStore('filterList');
-    const data : urlFilter[] = urlsData;
-    data.forEach(filter =>{
-        const addDataRequest : IDBRequest = storeObject.add(filter);
-        addDataRequest.onsuccess = (event) => {
-            console.log("Added data to IndexedDB");
-        }
-    
-        addDataRequest.onerror = (event) => {
-            console.log(`Failed to add data to IndexedDB, Error: ${(event.target as IDBRequest).error}`);
-        }
+    IDBFilters.forEach(filter =>{
+        storeObject.add(filter);
     })
 }
 

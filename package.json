@@ -14,6 +14,8 @@
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "@types/firefox": "^0.0.31"
+    "@types/dotenv-webpack": "^7.0.4",
+    "@types/firefox": "^0.0.31",
+    "dotenv-webpack": "^8.0.1"
   }
 }
