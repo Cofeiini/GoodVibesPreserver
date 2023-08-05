@@ -1,0 +1,26 @@
+[
+    {
+        "pattern":"^facebook\\.[a-z]{2,}$",
+        "tags":["sus"]
+    },
+    {
+        "pattern":"^youtube\\.[a-z]{2,}$",
+        "tags":["sus"]
+    },
+    {
+        "pattern":"^example\\.[a-z]{2,}$",
+        "tags":["sus"]
+    },
+    {
+        "pattern":"^twitter\\.[a-z]{2,}$",
+        "tags":["sus"]
+    },
+    {
+        "pattern":"^github\\.[a-z]{2,}$",
+        "tags":["sus"]
+    },
+    {
+        "pattern":"^twitch\\.[a-z]{2,}$",
+        "tags":["sus"]
+    }
+]

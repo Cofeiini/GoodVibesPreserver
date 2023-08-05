@@ -1,14 +1,19 @@
 import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
+import * as dotenv from "dotenv"
+
+dotenv.config({path: `.../.env`})
+
+const token = process.env.TOKEN;
 
 interface urlFilter
 {
-    url:string,
+    url: RegExp,
     tags:string[],
 }
 
-let urlsData : urlFilter[] = [{url:"facebook.com",tags:["sus"]},{url:"xvideos.com",tags:["sus"]},{url:"example.com",tags:["sus"]},{url:"example.org",tags:["sus"]}];
+let urlsData : urlFilter[] = [{url:/^facebook\.[a-z]{2,}$/,tags:["sus"]},{url:/^xvideos\.[a-z]{2,}$/,tags:["sus"]},{url:/^example\.[a-z]{2,}$/,tags:["sus"]}];
 
 let db : IDBDatabase;
 const dbRequest : IDBOpenDBRequest = window.indexedDB.open("filterDatabase",2);
@@ -54,8 +59,10 @@ function isBlockedUrl(hostname : string) : Promise<boolean>
     
         getDataRequest.onsuccess = (event) => {
             const data : urlFilter[] = (event.target as IDBRequest).result;
-            let urlStringArray : string[] = data.map((data) => data.url);
-            resolve(urlStringArray.includes(hostname));
+            data.forEach(filter => {
+                if(hostname.match(filter.url)) { resolve(true) }
+            })
+            resolve(false);
         }
     }) 
 }
