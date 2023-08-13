@@ -19,7 +19,9 @@
     "<all_urls>",
     "tabs",
     "webRequest",
-    "webRequestBlocking"
+    "webRequestBlocking",
+    "activeTab",
+    "windows"
   ],
 
   "background": {
