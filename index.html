@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="Editor for filters used in Good Vibes Preserver" />
+
+    <link rel="icon" type="image/x-icon" href="icons/icon.png" />
+    <link rel="stylesheet" type="text/css" href="scripts/css/index.css" />
+
+    <title>Filter Editor for Good Vibes Preserver</title>
+</head>
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+
+    <div id="root">
+        <div id="editorTabs" class="tabs"></div>
+
+        <div id="hostsEditor" class="editors">
+            <div class="hostsContainer">
+                <label for="hostsTextArea" style="height: 100%">
+                    <textarea id="hostsTextArea" placeholder="Type hostnames here. Each entry needs to be on a new line"></textarea>
+                </label>
+                <button id="hostsParseButton">Parse input</button>
+            </div>
+            <div class="hostsContainer">
+                <!-- TODO: Update the results when the parsing button is pressed -->
+                <div id="hostsResults">
+                    The input parsing results will show here.
+                </div>
+            </div>
+        </div>
+        <div id="filtersEditor" class="editors hidden">
+            <div id="filtersContainer">
+                <div id="filtersTable" class="table"></div>
+            </div>
+            <button id="filtersGenerate">Generate</button>
+        </div>
+        <div id="tagsEditor" class="editors hidden">
+            <!-- TODO: Add tag editor -->
+        </div>
+    </div>
+
+    <script src="scripts/ts/index.ts"></script>
+</body>
+</html>
