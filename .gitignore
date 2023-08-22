@@ -80,7 +80,6 @@ web_modules/
 .env.local
 
 # parcel-bundler cache (https://parceljs.org/)
-.cache
 .parcel-cache
 
 # Next.js build output
@@ -128,9 +127,6 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-
-# Project JS files
-scripts/**/*.js
 
 # Visual Studio Code config files
 .vscode

@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./out/",
+    "newLine": "lf",
+    "target": "ESNext",
+    "sourceMap": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true
+  },
+  "include": [
+    "scripts/**/*"
+  ],
+  "exclude": [
+    ".idea",
+    "node_modules",
+    "LICENSE",
+    "README.md"
+  ]
+}

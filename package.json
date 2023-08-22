@@ -1,0 +1,22 @@
+{
+  "name": "web-editor-for-good-vibes-preserver",
+  "version": "1.0.0",
+  "devDependencies": {
+    "gh-pages": "^6.0.0",
+    "parcel": "^2.9.3",
+    "parcel-namer-hashless": "^1.0.5",
+    "typescript": "^5.1.6"
+  },
+  "files": [
+    "index.html",
+    "scripts/"
+  ],
+  "scripts": {
+    "start": "parcel serve index.html",
+    "build": "parcel build index.html --public-url .",
+    "deploy": "npm run build && gh-pages -d dist"
+  },
+  "parcel-namer-hashless": {
+    "mode": "all"
+  }
+}
