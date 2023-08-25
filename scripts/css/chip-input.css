@@ -1,0 +1,58 @@
+.chip-input {
+    width: fit-content;
+    white-space: nowrap;
+}
+
+.chip-input div {
+    display: inline-flex;
+}
+
+.chip-input ul {
+    display: inline-flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 30em;
+    overflow-x: scroll;
+}
+
+.chip-input li {
+    display: inline-flex;
+    background: #555555;
+    color: white;
+    align-items: center;
+    padding: 0 5px;
+    margin: 1px 0;
+    border-radius: 15px;
+}
+
+.chip-input li + li {
+    margin-left: 5px;
+}
+
+.chip-input button {
+    display: inline-flex;
+    background: #333333;
+    color: white;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    font-size: 0.5em;
+    font-weight: bold;
+    text-decoration: none;
+    text-align: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+}
+
+.chip-input button:hover {
+    color: red;
+}
+
+.chip-input input {
+    display: inline-flex;
+    background: none;
+    color: white;
+    border: 0;
+}

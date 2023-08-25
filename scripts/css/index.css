@@ -1,3 +1,20 @@
+@import "chip-input.css";
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    border-radius: 6px;
+    -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 6px;
+    -webkit-box-shadow: inset 0 0 6px rgba(160, 160, 160, 0.5);
+}
+
 :root {
     margin: 10vh 5vw;
 
@@ -39,6 +56,7 @@ button, select, input, label {
     display: table;
     width: 100%;
     height: 100%;
+    padding: 1px;
 }
 
 .table-row {
@@ -47,14 +65,20 @@ button, select, input, label {
 
 .table-cell {
     display: table-cell;
+    width: 100%;
 }
 
-.table-cell > * {
+.table-cell > input, .table-cell > button {
+    box-sizing: border-box;
     width: 100%;
     height: 100%;
 }
 
-.table-vertical-header {
+.table-cell + .table-cell {
+    margin-left: 5px;
+}
+
+.table-row .table-cell:nth-child(1) {
     display: table-cell;
     width: 1px;
     white-space: nowrap;
@@ -188,5 +212,6 @@ button, select, input, label {
 }
 
 #filtersContainer {
+    height: 100%;
     overflow-y: scroll;
 }
