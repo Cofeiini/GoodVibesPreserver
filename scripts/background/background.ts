@@ -11,7 +11,7 @@ const dbRequest : IDBOpenDBRequest = window.indexedDB.open("filterDatabase",2);
 
 dbRequest.onupgradeneeded = (event) => {
     const database : IDBDatabase = (event.target as IDBOpenDBRequest).result;
-    database.createObjectStore('filterList',{keyPath:'id',autoIncrement: true});
+    database.createObjectStore('filterList', { keyPath:'id', autoIncrement: true });
 }
 
 dbRequest.onsuccess = (event) => {
@@ -26,25 +26,50 @@ dbRequest.onerror = (event) => {
 const storeUrlData = () => {
     fetch(filtersUrl,{
         headers: {
-            Authorization:`<(￣︶￣)↗ token here`
+            Authorization:`token `
         }
     }).then(response => response.json())
-        .then((responseJSON: githubResponse) => {
-            const filtersBase64 : string = responseJSON.content;
-            const filtersString : string = atob(filtersBase64);
-            const IDBFilters : urlFilter[] = JSON.parse(filtersString);
-            const transaction : IDBTransaction = db.transaction(['filterList'],'readwrite');
-            const storeObject : IDBObjectStore = transaction.objectStore('filterList');
-            IDBFilters.forEach((filter: urlFilter) => {
-                storeObject.add(filter);
-            });
+    .then((responseJSON: githubResponse) => {
+        const filtersString : string = atob(responseJSON.content);
+        const IDBFilters : urlFilter[] = JSON.parse(filtersString);
+        const transaction : IDBTransaction = db.transaction(['filterList'],'readwrite');
+        const storeObject : IDBObjectStore = transaction.objectStore('filterList');
+        IDBFilters.forEach((filter: urlFilter) => {
+            storeObject.add(filter);
         });
+    })
 }
 
+
 // URL blocking
-const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults> => {
-    const transaction: IDBTransaction = db.transaction(['filterList'], 'readonly')
-    const storeObject: IDBObjectStore = transaction.objectStore('filterList')
+
+const isBlockedUrl = async (hostname: string, url: URL, ignoringFilter : boolean) : Promise<filterResults> => {
+    let isWhitelisted : boolean = false;
+    const whitelistStorage = await browser.storage.local.get("whitelist");
+    const whitelist : string[] = whitelistStorage.whitelist;
+
+    const matches : RegExpMatchArray | null = url.toString().match(/(?:www\.)?([\w\-.]+\.\w{2,})/);
+    const address : string | undefined = matches?.[0];
+    if(address) { isWhitelisted = whitelist.includes(address) }
+
+    if( isWhitelisted || ignoringFilter)
+    {
+        return new Promise((resolve,_) => {
+            resolve({
+                "sitename": hostname,
+                "tags": [],
+                "blocked": false,
+                "url": url
+            });
+        })
+    }
+
+    const blockedAmountStorage = await browser.storage.local.get("blockedAmount");
+    let blockedAmount : number = blockedAmountStorage.blockedAmount;
+
+    const transaction: IDBTransaction = db.transaction(['filterList'], 'readonly');
+    const storeObject: IDBObjectStore = transaction.objectStore('filterList');
+
     const promise: Promise<filterResults> = new Promise((resolve, _) => {
         const getDataRequest: IDBRequest = storeObject.getAll();
         getDataRequest.onsuccess = (event: Event) => {
@@ -69,7 +94,7 @@ const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults>
         }
     });
 
-    return await promise.then((results: filterResults) => {
+    return promise.then((results: filterResults) => {
         return results;
     });
 }
@@ -77,9 +102,7 @@ const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults>
 const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Promise<BlockingResponse> | void => {
     const filter: browser.webRequest.StreamFilter = browser.webRequest.filterResponseData(details.requestId);
     const encoder: TextEncoder = new TextEncoder();
-
     const url : URL = new URL(details.url);
-    console.log(url);
 
     let buffer : Uint8Array = new Uint8Array();
     filter.ondata = (event: _StreamFilterOndataEvent) => {
@@ -91,23 +114,83 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
 
     filter.onstop = () => {
         const ignoringFilter : boolean = url.searchParams.get("skipfilter") !== null;
-        console.log(ignoringFilter);
+        console.log(ignoringFilter); //debug
 
-        isBlockedUrl(url.hostname, url)
+        isBlockedUrl(url.hostname, url, ignoringFilter)
             .then((filteredURL: filterResults) => {
-                console.log(filteredURL);
-                if(filteredURL.blocked && !ignoringFilter) {
+                console.log(filteredURL); //debug
+                if(filteredURL.blocked) {
                     filteredURL.url.searchParams.set("skipfilter", "true");
                     filter.write(encoder.encode(
-                        `
-                        <body style="background-color: rgb(145,26,26)">
-                        <div style="text-align: center">
-                        <h1>The site ${filteredURL.sitename} is considered a dangerous website.</h1>
-                        <h2>It is considered a site that contains: ${filteredURL.tags}</h2>
-                        <a href="${filteredURL.url.href}" style="text-decoration: none; background-color: rgb(80,10,10); border-radius: 5px; color: black; padding: 5px">Proceed anyways</a>
-                        </div>
-                        </body>
-                        `
+                    `
+                        <html>
+                            <body>
+                                <div class="main-container">
+                                    <div class="website-warning">
+                                        <h1>The site: <span class="url">${filteredURL.sitename}</span> has been blocked</h1>
+                                        <label>It is considered a site that contains: <span class="tags">${filteredURL.tags}</span>. Visiting this site could risk your device or show unpleasant content.<br>
+                                        We recommend to avoid this site, if you are sure you can proceed under your own risk, please proceed with caution.</label>
+                                    </div>
+                                    <div class="proceed-section">
+                                        <button class="proceed-button">Proceed Anyways</button>
+                                    </div>
+                                </div>
+                            </body>
+                        </html>
+                        <style>
+                        h1, h2, label
+                        {
+                            color: white;
+                        }
+                        body{
+                            background-color: rgb(63, 0, 0);
+                            display: flex;
+                            justify-content: center;
+                        }
+                        *
+                        {
+                            font-family:Arial, Helvetica, sans-serif;
+                        }
+                        .main-container
+                        {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            gap: 10px;
+                            background-color: rgb(29, 29, 29);
+                            box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.377);
+                            border-radius: 5px;
+                            width: fit-content;
+                        }
+                        .website-warning
+                        {
+                            padding: 20px;
+                            border-radius: 5px;
+                        }
+                        .proceed-section
+                        {
+                            display: flex;
+                            padding: 20px;
+                            border-radius: 5px;
+                        }
+                        .proceed-button
+                        {
+                            border: none;
+                            color: white;
+                            background-color: rgba(0,0,0,0);
+                            text-decoration: underline;
+                            cursor: pointer;
+                        }
+                        .proceed-button:hover
+                        {
+                            color: grey;
+                        }
+                        .url, .tags
+                        {
+                            color: crimson;
+                        }
+                    </style>
+                    `
                     ));
                 } else {
                     filter.write(buffer);
@@ -116,11 +199,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                 filter.close();
             });
     };
-
     return { cancel: false };
 }
 
 browser.webRequest.onBeforeRequest.addListener(handleRequest,{ urls: [ "<all_urls>" ], types: [ "main_frame" ] }, [ "blocking" ]);
-
-
-
