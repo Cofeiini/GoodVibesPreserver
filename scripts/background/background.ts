@@ -2,40 +2,9 @@ import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
 const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=test";
+import { urlFilter, githubResponse, filterResults } from "../tools/interfaces";
 
 // IndexedDB filters setup
-
-interface urlFilter
-{
-    pattern: RegExp,
-    tags:string[],
-}
-
-interface filterResults
-{
-    url: URL,
-    sitename: string,
-    tags : string | string[],
-    blocked: boolean,
-}
-
-interface githubResponse {
-    "type": string,
-    "size": number,
-    "name": string,
-    "path": string,
-    "content": string,
-    "sha": string,
-    "url": string,
-    "git_url": string | null,
-    "html_url": string | null,
-    "download_url": string | null,
-    "_links": {
-        "git": string,
-        "html": string,
-        "self": string
-    }
-}
 
 let db : IDBDatabase;
 const dbRequest : IDBOpenDBRequest = window.indexedDB.open("filterDatabase",2);
