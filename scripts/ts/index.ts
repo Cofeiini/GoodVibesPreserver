@@ -1,37 +1,23 @@
 import {ChipInput} from "./chip-input";
+import {Optional} from "./common";
 
-const tabs = document.querySelector("#editorTabs");
-if (!tabs) {
-	throw new Error("editorTabs elements is missing!");
-}
-
-const hostsParseButton = document.querySelector("#hostsParseButton");
-if (!hostsParseButton) {
-	throw new Error("hostsParseButton element is missing!");
-}
-
-const filters = document.querySelector("#filtersEditor");
-if (!filters) {
-	throw new Error("filtersEditor element is missing!");
-}
-
-const filtersTable = filters.querySelector("#filtersTable");
-if (!filtersTable) {
-	throw new Error("filtersTable element is missing!");
-}
+const tabs = new Optional(document.querySelector("#editorTabs"));
+const hostsParseButton = new Optional(document.querySelector("#hostsParseButton"));
+const filters = new Optional(document.querySelector("#filtersEditor"));
+const filtersTable = new Optional(filters.value().querySelector("#filtersTable"));
 
 [
 	{
 		text: "hosts",
-		target: document.querySelector("#hostsEditor"),
+		target: new Optional(document.querySelector("#hostsEditor")),
 	},
 	{
 		text: "filters",
-		target: document.querySelector("#filtersEditor"),
+		target: new Optional(document.querySelector("#filtersEditor")),
 	},
 	{
 		text: "tags",
-		target: document.querySelector("#tagsEditor"),
+		target: new Optional(document.querySelector("#tagsEditor")),
 	},
 ].forEach((tab) => {
 	// TODO: Consider adding images for the tabs
@@ -52,12 +38,12 @@ if (!filtersTable) {
 		document.querySelectorAll("#editorTabs > button").forEach(tab => tab.classList.remove("active"));
 
 		(event.currentTarget as Element).classList.add("active");
-		tab.target.classList.remove("hidden");
+		tab.target.value().classList.remove("hidden");
 	};
 	// button.appendChild(image);
 	button.appendChild(text);
 
-	tabs.appendChild(button);
+	tabs.value().appendChild(button);
 });
 
 // TODO: Consider moving this to a separate "definitions" file
@@ -111,7 +97,7 @@ const getFilter = ({ label = "example.com", regex = new RegExp("(?:www\\.)?examp
 	return container;
 };
 
-(hostsParseButton as HTMLButtonElement).onclick = (_event) => {
+(hostsParseButton.value() as HTMLButtonElement).onclick = (_event) => {
 	const hostsTextArea = document.querySelector("#hostsTextArea");
 	if (!hostsTextArea) {
 		throw new Error("hostsTextArea element is missing!");
@@ -143,9 +129,9 @@ const getFilter = ({ label = "example.com", regex = new RegExp("(?:www\\.)?examp
 		filtersArray.push(getFilter({ label: key, regex: value, tags: [] })); // TODO: Implement tags
 	});
 
-	filtersTable.replaceChildren(...filtersArray);
+	filtersTable.value().replaceChildren(...filtersArray);
 };
 
-filtersTable.appendChild(getFilter());
+filtersTable.value().appendChild(getFilter()); // TODO: Remove after testing is done
 
-(tabs.children[1] as HTMLElement).click();
+(tabs.value().children[1] as HTMLElement).click();
