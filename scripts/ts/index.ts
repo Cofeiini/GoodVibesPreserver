@@ -1,3 +1,5 @@
+import {ChipInput} from "./chip-input";
+
 const tabs = document.querySelector("#editorTabs");
 if (!tabs) {
 	throw new Error("editorTabs elements is missing!");
@@ -84,14 +86,11 @@ const getFilter = ({ label = "example.com", regex = new RegExp("(?:www\\.)?examp
 	regexInput.placeholder = "(?:www\\.)?example\\.[a-z]{2,}$";
 	regexCell.appendChild(regexInput);
 
-	// TODO: Add custom "chip" inputs
 	const tagsCell = document.createElement("div");
 	tagsCell.className = "table-cell";
-	const tagsField = document.createElement("input");
-	tagsField.type = "text";
-	tagsField.value = tags.join(", ");
-	tagsField.placeholder = "tag_1, tag_2";
-	tagsCell.appendChild(tagsField);
+	const tagsField = new ChipInput();
+	tagsField.push(...tags);
+	tagsCell.appendChild(tagsField.container);
 
 	const deleteCell = document.createElement("div");
 	deleteCell.className = "table-cell";
