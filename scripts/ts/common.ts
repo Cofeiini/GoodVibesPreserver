@@ -7,21 +7,21 @@ export class Optional<T> {
 
     assign = (other: any) => {
         if (other === null) {
-            throw new Error(`Cannot assign null to Optional`);
+            throw new Error("Cannot assign null to Optional");
         }
 
         if (other === undefined) {
-            throw new Error(`Should not assign undefined to Optional. Use the reset member function instead`);
+            throw new Error("Should not assign undefined to Optional. Use the reset member function instead");
         }
 
         this.data = other;
     }
 
-    has_value = () => {
+    has_value = (): Boolean => {
         return (this.data !== null && this.data !== undefined);
     }
 
-    value = () => {
+    value = (): T => {
         if (this.data !== null && this.data !== undefined) {
             return this.data;
         }
@@ -29,7 +29,7 @@ export class Optional<T> {
         throw new Error("Bad Optional access");
     }
 
-    value_or = (default_value: T) => {
+    value_or = (default_value: T): T => {
         if (this.data !== null && this.data !== undefined) {
             return this.data;
         }
