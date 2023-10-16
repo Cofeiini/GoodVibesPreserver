@@ -1,8 +1,41 @@
 import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
-const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=test";
+const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
+import { filterToken } from "../tools/interfaces";
 import { urlFilter, githubResponse, filterResults } from "../tools/interfaces";
+//Extension status
+
+let extensionOn : boolean = true;
+
+browser.runtime.onMessage.addListener((message : any) =>{
+    if(message.data.action === "redirect")
+    {
+        console.log("Proceed called");
+        let targetId : number = Number(message.data.id);
+        let targetUrl : string = message.data.url;
+        skippingTabs.add(targetId);
+        browser.tabs.update(targetId, {url: targetUrl});
+    }
+})
+
+
+//Local storage setup
+
+browser.runtime.onInstalled.addListener(() =>{
+    browser.storage.local.set({
+        whitelist: [],
+        blockedAmount: 0,
+    })
+    .then(() =>{
+        console.log("Local storage created successfully.");
+        return;
+    })
+    .catch(() =>{
+        console.log("Failed to create local storage.");
+        return;
+    })
+})
 
 // IndexedDB filters setup
 
@@ -26,7 +59,7 @@ dbRequest.onerror = (event) => {
 const storeUrlData = () => {
     fetch(filtersUrl,{
         headers: {
-            Authorization:`token `
+            Authorization:`${filterToken}`
         }
     }).then(response => response.json())
     .then((responseJSON: githubResponse) => {
@@ -99,11 +132,14 @@ const isBlockedUrl = async (hostname: string, url: URL, ignoringFilter : boolean
     });
 }
 
+let blockedContentTabs : Set<number> = new Set();
+let skippingTabs : Set<number> = new Set();
+
 const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Promise<BlockingResponse> | void => {
+    if(skippingTabs.has(details.tabId)) { skippingTabs.delete(details.tabId); return; }
     const filter: browser.webRequest.StreamFilter = browser.webRequest.filterResponseData(details.requestId);
     const encoder: TextEncoder = new TextEncoder();
     const url : URL = new URL(details.url);
-
     let buffer : Uint8Array = new Uint8Array();
     filter.ondata = (event: _StreamFilterOndataEvent) => {
         const temp: Uint8Array = new Uint8Array(buffer.byteLength + event.data.byteLength);
@@ -121,6 +157,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                 console.log(filteredURL); //debug
                 if(filteredURL.blocked) {
                     filteredURL.url.searchParams.set("skipfilter", "true");
+                    blockedContentTabs.add(details.tabId);
                     filter.write(encoder.encode(
                     `
                         <html>
@@ -132,7 +169,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                                         We recommend to avoid this site, if you are sure you can proceed under your own risk, please proceed with caution.</label>
                                     </div>
                                     <div class="proceed-section">
-                                        <button class="proceed-button">Proceed Anyways</button>
+                                        <button id="proceedanyways">Proceed Anyways</button>
                                     </div>
                                 </div>
                             </body>
@@ -173,7 +210,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                             padding: 20px;
                             border-radius: 5px;
                         }
-                        .proceed-button
+                        #proceedanyways
                         {
                             border: none;
                             color: white;
@@ -181,7 +218,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                             text-decoration: underline;
                             cursor: pointer;
                         }
-                        .proceed-button:hover
+                        #proceedanyways:hover
                         {
                             color: grey;
                         }
@@ -201,5 +238,16 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
     };
     return { cancel: false };
 }
+
+const messageTab = (tabId : number) =>{
+    if(blockedContentTabs.has(tabId))
+    {
+        browser.tabs.sendMessage(tabId,{action: "add_listener", id: tabId})
+        .then(() => blockedContentTabs.delete(tabId));
+    }
+}
+
+browser.tabs.onUpdated.addListener(messageTab);
+
 
 browser.webRequest.onBeforeRequest.addListener(handleRequest,{ urls: [ "<all_urls>" ], types: [ "main_frame" ] }, [ "blocking" ]);

@@ -4,6 +4,7 @@ export interface urlFilter
     tags:string[],
 }
 
+
 export interface filterResults
 {
     url: URL,

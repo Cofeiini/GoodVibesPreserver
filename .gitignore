@@ -132,8 +132,14 @@ dist
 # Project JS files
 scripts/**/*.js
 
+#Filter token file
+scripts/tools/token.ts
+
 # Visual Studio Code config files
 .vscode
 
 # WebStorm config files
 .idea
+
+# Bun files
+.lockb
