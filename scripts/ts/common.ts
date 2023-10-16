@@ -1,5 +1,5 @@
 export class Optional<T> {
-    data: T | undefined = undefined;
+    private data: Exclude<T, null> | undefined = undefined;
 
     constructor(input: T) {
         this.assign(input);
@@ -21,7 +21,7 @@ export class Optional<T> {
         return (this.data !== null && this.data !== undefined);
     }
 
-    value = (): T => {
+    value = (): Exclude<T, null> => {
         if (this.data !== null && this.data !== undefined) {
             return this.data;
         }
