@@ -142,4 +142,4 @@ scripts/tools/token.ts
 .idea
 
 # Bun files
-.lockb
+*.lockb
