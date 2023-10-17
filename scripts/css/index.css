@@ -56,32 +56,48 @@ button, select, input, label {
     display: table;
     width: 100%;
     height: 100%;
-    padding: 1px;
 }
 
 .table-row {
     display: table-row;
 }
 
-.table-cell {
+.table-label-cell {
     display: table-cell;
-    width: 100%;
+    white-space: nowrap;
+    width: 1px;
 }
 
-.table-cell > input, .table-cell > button {
+.table-input-cell {
+    display: table-cell;
+}
+
+.table-tags-cell {
+    display: table-cell;
+}
+
+.table-delete-cell {
+    display: table-cell;
+    text-align: end;
+    width: 52px;
+}
+
+.table-input-cell > input {
     box-sizing: border-box;
     width: 100%;
     height: 100%;
 }
 
-.table-cell + .table-cell {
-    margin-left: 5px;
+.table-delete-cell > button {
+    box-sizing: border-box;
 }
 
-.table-row .table-cell:nth-child(1) {
-    display: table-cell;
-    width: 1px;
-    white-space: nowrap;
+.table-spacer {
+    height: 100% !important;
+}
+
+.table-spacer:hover {
+    outline: none !important;
 }
 
 .closeButton {
@@ -213,5 +229,7 @@ button, select, input, label {
 
 #filtersContainer {
     height: 100%;
+    overflow-x: hidden;
     overflow-y: scroll;
+    padding: 1px;
 }

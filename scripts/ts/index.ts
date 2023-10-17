@@ -1,5 +1,5 @@
-import {ChipInput} from "./chip-input";
 import {Optional} from "./common";
+import {ChipInput} from "./chip-input";
 
 const tabs = new Optional(document.querySelector("#editorTabs"));
 const hostsParseButton = new Optional(document.querySelector("#hostsParseButton"));
@@ -47,47 +47,66 @@ const filtersTable = new Optional(filters.value().querySelector("#filtersTable")
 });
 
 // TODO: Consider moving this to a separate "definitions" file
+type filterData = {
+	regex: RegExp;
+	tags: string[];
+}
 type filterType = {
 	label?: string;
-	regex?: RegExp;
-	tags?: string[];
+	data?: filterData;
 }
 
-const getFilter = ({ label = "example.com", regex = new RegExp("(?:www\\.)?example\\.[a-z]{2,}$"), tags = [ "test_1", "test_2" ] }: filterType = {}) => {
+const buildFilter = ({ label, data }: filterType = {}) => {
 	const container = document.createElement("div");
-	container.className = "filter table-row";
+	container.className = `table-row ${!data ? "table-spacer" : "filter"}`;
 
 	const labelCell = document.createElement("div");
-	labelCell.className = "table-vertical-header";
-	const labelInput = document.createElement("p");
-	labelInput.innerText = label;
-	labelInput.contentEditable = "false";
-	labelCell.appendChild(labelInput);
+	labelCell.className = "table-label-cell";
+	if (label) {
+		const labelInput = document.createElement("p");
+		labelInput.innerText = label;
+		labelInput.contentEditable = "false";
+		labelCell.appendChild(labelInput);
+	}
 
 	const regexCell = document.createElement("div");
-	regexCell.className = "table-cell";
-	const regexInput = document.createElement("input");
-	regexInput.type = "text";
-	regexInput.value = regex.toString();
-	regexInput.placeholder = "(?:www\\.)?example\\.[a-z]{2,}$";
-	regexCell.appendChild(regexInput);
+	regexCell.className = "table-input-cell";
+	if (data) {
+		const regexInput = document.createElement("input");
+		regexInput.type = "text";
+		regexInput.value = data.regex.toString();
+		regexInput.placeholder = "(?:www\\.)?example\\.[a-z]{2,}$";
+		regexCell.appendChild(regexInput);
+	}
 
 	const tagsCell = document.createElement("div");
-	tagsCell.className = "table-cell";
-	const tagsField = new ChipInput();
-	tagsField.push(...tags);
-	tagsCell.appendChild(tagsField.container);
+	tagsCell.className = "table-tags-cell";
+	if (data) {
+		const tagsField = new ChipInput();
+		tagsField.push(...data.tags);
+		tagsCell.appendChild(tagsField.container);
+	}
 
 	const deleteCell = document.createElement("div");
-	deleteCell.className = "table-cell";
-	const deleteButton = document.createElement("button");
-	deleteButton.className = "closeButton";
-	deleteButton.innerText = "Delete";
-	deleteButton.onclick = (_event) => {
-		// TODO: Add proper functionality for deleting entries
-		console.log(`Element with "${regexInput.value}" value was removed`);
-	};
-	deleteCell.appendChild(deleteButton);
+	deleteCell.className = "table-delete-cell";
+	if (data) {
+		const deleteButton = document.createElement("button");
+		deleteButton.className = "closeButton";
+		deleteButton.innerText = "Delete";
+		deleteButton.onclick = (_event) => {
+			let elementList: Element[] = [];
+			for (const element of filtersTable.value().children) {
+				if (element === container) {
+					continue;
+				}
+
+				elementList.push(element);
+			}
+
+			filtersTable.value().replaceChildren(...elementList);
+		};
+		deleteCell.appendChild(deleteButton);
+	}
 
 	container.appendChild(labelCell);
 	container.appendChild(regexCell);
@@ -98,40 +117,33 @@ const getFilter = ({ label = "example.com", regex = new RegExp("(?:www\\.)?examp
 };
 
 (hostsParseButton.value() as HTMLButtonElement).onclick = (_event) => {
-	const hostsTextArea = document.querySelector("#hostsTextArea");
-	if (!hostsTextArea) {
-		throw new Error("hostsTextArea element is missing!");
-	}
+	const hostsTextArea = new Optional(document.querySelector("#hostsTextArea"));
 
-	// TODO: Add map for tags
-	let hostsMap : Map<string, RegExp> = new Map();
-	(hostsTextArea as HTMLTextAreaElement).value.trim().split(/\r\n|\n/)
+	let hostsMap : Map<string, filterData> = new Map();
+	(hostsTextArea.value() as HTMLTextAreaElement).value.trim().split(/\r\n|\n/)
 		.filter((line) => line.trim().length > 0)
 		.filter((line) => line.trim().match(/^(?:#|\/\/)/) === null)
 		.forEach((line) => {
 			const matches = line.match(/(?:www\.)?((?:[\w\-.]+\.)+?\w{2,})/);
 			if (matches) {
-				let match = matches[0];
-				if ((matches.length > 1) && (match === "127.0.0.1" || match === "0.0.0.0")) {
-					match = matches[1];
-				}
-
+				let match = matches[1];
 				const hostname = match.slice(0, match.lastIndexOf("."));
-				hostsMap.set(match, new RegExp(`(?:www\\.)?${hostname}\\.[a-z]{2,}$`));
+				let tags = [...line.matchAll(/\[([^\]]+)]/g)].map(value => { return value[1]; });
 
-				// TODO: Add tag parsing
-				// const tags = line.match(/\[([^\]]+)]/);
+				hostsMap.set(match, { regex: new RegExp(`(?:www\\.)?${hostname}\\.[a-z]{2,}$`), tags: tags });
 			}
 		});
 
 	let filtersArray: HTMLDivElement[] = [];
-	hostsMap.forEach((value, key, _map) => {
-		filtersArray.push(getFilter({ label: key, regex: value, tags: [] })); // TODO: Implement tags
+	hostsMap.forEach((value, key) => {
+		filtersArray.push(buildFilter({ label: key, data: value }));
 	});
 
+	filtersArray.push(buildFilter());
 	filtersTable.value().replaceChildren(...filtersArray);
 };
 
-filtersTable.value().appendChild(getFilter()); // TODO: Remove after testing is done
+filtersTable.value().appendChild(buildFilter({ label: "example.com", data: { regex: new RegExp("(?:www\\.)?example\\.[a-z]{2,}$"), tags: ["test_1", "test_2", "test_3", "test_4", "test_5", "test_6", "test_7", "test_8", "test_9", "test_10"] } })); // TODO: Remove after testing is done
+filtersTable.value().appendChild(buildFilter({})); // TODO: Remove after testing is done
 
 (tabs.value().children[1] as HTMLElement).click();
