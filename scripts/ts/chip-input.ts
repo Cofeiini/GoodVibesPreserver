@@ -7,10 +7,12 @@ export class ChipInput {
     constructor() {
         this.text.onkeydown = (event) => {
             if (event.key === "Enter") {
-                let value = this.text.value.trim();
+                const value = this.text.value.trim();
                 if (value !== "" && !this.items.includes(value)) {
                     this.push(value);
                 }
+
+                this.list.children.item(this.items.indexOf(value))?.scrollIntoView(true);
             }
         };
         this.text.placeholder = "Type a tag and press Enter";
@@ -34,13 +36,13 @@ export class ChipInput {
     };
 
     render = () => {
-        this.list.replaceChildren(...this.items.map((item, index, _array) => {
-            let listItem = document.createElement("li");
+        this.list.replaceChildren(...this.items.map((item, index) => {
+            const listItem = document.createElement("li");
 
-            let itemText= document.createElement("div");
+            const itemText= document.createElement("div");
             itemText.innerText = item;
 
-            let deleteButton = document.createElement("button");
+            const deleteButton = document.createElement("button");
             deleteButton.innerText = "X";
             deleteButton.onclick = (_event) => {
                 this.items = this.items.filter((item) => this.items.indexOf(item) !== index);

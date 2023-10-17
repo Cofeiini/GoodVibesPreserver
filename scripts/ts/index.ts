@@ -126,9 +126,9 @@ const buildFilter = ({ label, data }: filterType = {}) => {
 		.forEach((line) => {
 			const matches = line.match(/(?:www\.)?((?:[\w\-.]+\.)+?\w{2,})/);
 			if (matches) {
-				let match = matches[1];
+				const match = matches[1];
 				const hostname = match.slice(0, match.lastIndexOf("."));
-				let tags = [...line.matchAll(/\[([^\]]+)]/g)].map(value => { return value[1]; });
+				const tags = [...new Set([...line.matchAll(/\[([^\]]+)]/g)].map(value => { return value[1]; }))];
 
 				hostsMap.set(match, { regex: new RegExp(`(?:www\\.)?${hostname}\\.[a-z]{2,}$`), tags: tags });
 			}
