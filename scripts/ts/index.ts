@@ -1,3 +1,4 @@
+import {makeUniqueTagHue, tagColorMap} from "./shared";
 import {Optional} from "./common";
 import {ChipInput} from "./chip-input";
 
@@ -82,6 +83,12 @@ const buildFilter = ({ label, data }: filterType = {}) => {
 	const tagsCell = document.createElement("div");
 	tagsCell.className = "table-tags-cell";
 	if (data) {
+		data.tags.forEach(tag => {
+			if (!tagColorMap.has(tag)) {
+				tagColorMap.set(tag, makeUniqueTagHue());
+			}
+		});
+
 		const tagsField = new ChipInput();
 		tagsField.push(...data.tags);
 		tagsCell.appendChild(tagsField.container);

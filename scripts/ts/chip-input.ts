@@ -1,3 +1,5 @@
+import {makeUniqueTagHue, primaryHSL, tagColorMap} from "./shared";
+
 export class ChipInput {
     container = document.createElement("div");
     list = document.createElement("ul");
@@ -7,12 +9,16 @@ export class ChipInput {
     constructor() {
         this.text.onkeydown = (event) => {
             if (event.key === "Enter") {
-                const value = this.text.value.trim();
-                if (value !== "" && !this.items.includes(value)) {
-                    this.push(value);
+                const tag = this.text.value.trim();
+                if (tag !== "" && !this.items.includes(tag)) {
+                    if (!tagColorMap.has(tag)) {
+                        tagColorMap.set(tag, makeUniqueTagHue());
+                    }
+
+                    this.push(tag);
                 }
 
-                this.list.children.item(this.items.indexOf(value))?.scrollIntoView(true);
+                this.list.children.item(this.items.indexOf(tag))?.scrollIntoView();
             }
         };
         this.text.placeholder = "Type a tag and press Enter";
@@ -38,6 +44,9 @@ export class ChipInput {
     render = () => {
         this.list.replaceChildren(...this.items.map((item, index) => {
             const listItem = document.createElement("li");
+            const hue = tagColorMap.get(item) ?? 0;
+            listItem.style.backgroundColor = primaryHSL(hue);
+            listItem.style.color = "black";
 
             const itemText= document.createElement("div");
             itemText.innerText = item;
@@ -45,7 +54,7 @@ export class ChipInput {
             const deleteButton = document.createElement("button");
             deleteButton.innerText = "X";
             deleteButton.onclick = (_event) => {
-                this.items = this.items.filter((item) => this.items.indexOf(item) !== index);
+                this.items = this.items.filter(item => this.items.indexOf(item) !== index);
                 this.render();
             };
 
