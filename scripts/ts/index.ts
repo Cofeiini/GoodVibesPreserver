@@ -75,8 +75,8 @@ const buildFilter = ({ label, data }: filterType = {}) => {
 	if (data) {
 		const regexInput = document.createElement("input");
 		regexInput.type = "text";
-		regexInput.value = data.regex.toString();
-		regexInput.placeholder = "(?:www\\.)?example\\.[a-z]{2,}$";
+		regexInput.value = data.regex.source;
+		regexInput.placeholder = "example.com";
 		regexCell.appendChild(regexInput);
 	}
 
@@ -126,18 +126,17 @@ const buildFilter = ({ label, data }: filterType = {}) => {
 (hostsParseButton.value() as HTMLButtonElement).onclick = (_event) => {
 	const hostsTextArea = new Optional(document.querySelector("#hostsTextArea"));
 
-	let hostsMap : Map<string, filterData> = new Map();
+	const hostsMap : Map<string, filterData> = new Map();
 	(hostsTextArea.value() as HTMLTextAreaElement).value.trim().split(/\r\n|\n/)
-		.filter((line) => line.trim().length > 0)
-		.filter((line) => line.trim().match(/^(?:#|\/\/)/) === null)
-		.forEach((line) => {
-			const matches = line.match(/(?:www\.)?((?:[\w\-.]+\.)+?\w{2,})/);
+		.map(line => line.trim())
+		.filter(line => (line.length > 0) && (line.match(/^(?:#|\/\/)/) === null))
+		.forEach(line => {
+			const matches = line.match(/(?:www\.)?((?:[\w\-.]+)+?\.\w{2,})/);
 			if (matches) {
-				const match = matches[1];
-				const hostname = match.slice(0, match.lastIndexOf("."));
 				const tags = [...new Set([...line.matchAll(/\[([^\]]+)]/g)].map(value => { return value[1]; }))];
+				const hostname = matches[1];
 
-				hostsMap.set(match, { regex: new RegExp(`(?:www\\.)?${hostname}\\.[a-z]{2,}$`), tags: tags });
+				hostsMap.set(hostname, { regex: new RegExp(`${hostname}`), tags: tags });
 			}
 		});
 
@@ -146,11 +145,11 @@ const buildFilter = ({ label, data }: filterType = {}) => {
 		filtersArray.push(buildFilter({ label: key, data: value }));
 	});
 
-	filtersArray.push(buildFilter());
+	filtersArray.push(buildFilter()); // Construct a spacer at the bottom
 	filtersTable.value().replaceChildren(...filtersArray);
 };
 
-filtersTable.value().appendChild(buildFilter({ label: "example.com", data: { regex: new RegExp("(?:www\\.)?example\\.[a-z]{2,}$"), tags: ["test_1", "test_2", "test_3", "test_4", "test_5", "test_6", "test_7", "test_8", "test_9", "test_10"] } })); // TODO: Remove after testing is done
+filtersTable.value().appendChild(buildFilter({ label: "example.com", data: { regex: new RegExp("example.com"), tags: ["test_1", "test_2", "test_3", "test_4", "test_5", "test_6", "test_7", "test_8", "test_9", "test_10"] } })); // TODO: Remove after testing is done
 filtersTable.value().appendChild(buildFilter({})); // TODO: Remove after testing is done
 
 (tabs.value().children[1] as HTMLElement).click();
