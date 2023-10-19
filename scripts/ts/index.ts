@@ -16,10 +16,6 @@ const filtersTable = new Optional(filters.value().querySelector("#filtersTable")
 		text: "filters",
 		target: new Optional(document.querySelector("#filtersEditor")),
 	},
-	{
-		text: "tags",
-		target: new Optional(document.querySelector("#tagsEditor")),
-	},
 ].forEach((tab) => {
 	// TODO: Consider adding images for the tabs
 	// const image = document.createElement("img");
