@@ -1,4 +1,4 @@
-import {makeUniqueTagHue, tagColorMap} from "./shared";
+import {filterData, filterType, makeUniqueTagHue, tagColorMap} from "./shared";
 import {Optional} from "./common";
 import {ChipInput} from "./chip-input";
 
@@ -27,10 +27,6 @@ const filtersTable = new Optional(filters.value().querySelector("#filtersTable")
 
 	const button = document.createElement("button");
 	button.onclick = (event) => {
-		if (!tab.target) {
-			throw new Error(`${tab.text} is missing its target!`);
-		}
-
 		document.querySelectorAll(".editors").forEach(editor => editor.classList.add("hidden"));
 		document.querySelectorAll("#editorTabs > button").forEach(tab => tab.classList.remove("active"));
 
@@ -42,16 +38,6 @@ const filtersTable = new Optional(filters.value().querySelector("#filtersTable")
 
 	tabs.value().appendChild(button);
 });
-
-// TODO: Consider moving this to a separate "definitions" file
-type filterData = {
-	regex: RegExp;
-	tags: string[];
-}
-type filterType = {
-	label?: string;
-	data?: filterData;
-}
 
 const buildFilter = ({ label, data }: filterType = {}) => {
 	const container = document.createElement("div");

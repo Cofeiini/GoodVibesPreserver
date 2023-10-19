@@ -16,3 +16,13 @@ export const makeUniqueTagHue = () => {
 
     return hue;
 }
+
+export type filterData = {
+    regex: RegExp;
+    tags: string[];
+}
+
+export type filterType = {
+    label?: string;
+    data?: filterData;
+}
