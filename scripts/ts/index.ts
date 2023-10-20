@@ -3,7 +3,9 @@ import {Optional} from "./common";
 import {ChipInput} from "./chip-input";
 
 const tabs = new Optional(document.querySelector("#editorTabs"));
-const hostsParseButton = new Optional(document.querySelector("#hostsParseButton"));
+const hostsTextArea = new Optional(document.querySelector("#hostsTextArea"));
+const parseButton = new Optional(document.querySelector("#hostsParseButton"));
+const parseResults = new Optional(document.querySelector("#hostsResults"));
 const filters = new Optional(document.querySelector("#filtersEditor"));
 const filtersTable = new Optional(filters.value().querySelector("#filtersTable"));
 
@@ -105,33 +107,83 @@ const buildFilter = ({ label, data }: filterType = {}) => {
 	return container;
 };
 
-(hostsParseButton.value() as HTMLButtonElement).onclick = (_event) => {
-	const hostsTextArea = new Optional(document.querySelector("#hostsTextArea"));
+parseButton.value_as<HTMLButtonElement>().onclick = (_event) => {
+	tagColorMap.clear();
 
+	const resultText: string[] = [];
+
+	// There is possibly going to be a lot of data, so this block should free the memory when it's no longer used
+	const allLines = new Optional(hostsTextArea.value_as<HTMLTextAreaElement>().value.trim().split(/\r\n|\n/).map(line => line.trim()));
+	const processedCount = allLines.value().length;
+	resultText.push(`Lines: ${processedCount}`);
+
+	const dataLines = allLines.value().filter(line => (line.length > 0) && (line.match(/^(?:#|\/\/)/) === null));
+	allLines.reset(); // Try to free the unused memory
+
+	const dataCount = dataLines.length;
+	resultText.push(`Lines with data: ${dataCount}`);
+	resultText.push(`Lines with comments: ${processedCount - dataCount}`);
+
+	let hostCount = 0;
+	let tagCount = 0;
+	let newTagCount = 0;
 	const hostsMap : Map<string, filterData> = new Map();
-	(hostsTextArea.value() as HTMLTextAreaElement).value.trim().split(/\r\n|\n/)
-		.map(line => line.trim())
-		.filter(line => (line.length > 0) && (line.match(/^(?:#|\/\/)/) === null))
-		.forEach(line => {
-			const matches = line.match(/(?:www\.)?((?:[\w\-.]+)+?\.\w{2,})/);
-			if (matches) {
-				const tags = [...new Set([...line.matchAll(/\[([^\]]+)]/g)].map(value => { return value[1]; }))];
-				const hostname = matches[1];
+	dataLines.forEach(line => {
+		const matches = line.match(/(?:www\.)?((?:[\w\-.]+)+?\.\w{2,})/);
+		if (matches) {
+			const tags = [...line.matchAll(/\[([^\]]+)]/g)];
+			const newTags = [...new Set(tags.map(value => { return value[1]; }))];
+			const hostname = matches[1];
 
-				hostsMap.set(hostname, { regex: new RegExp(`${hostname}`), tags: tags });
-			}
-		});
+			hostCount++;
+			tagCount += tags.length;
+			newTagCount += newTags.length;
 
-	let filtersArray: HTMLDivElement[] = [];
+			hostsMap.set(hostname, { regex: new RegExp(`${hostname}`), tags: newTags });
+		}
+	});
+	resultText.push(`Hostnames: ${hostCount}`);
+	resultText.push(`Hostnames with errors: ${dataCount - hostCount}`);
+	resultText.push(`Hostnames with duplicates: ${hostCount - hostsMap.size}`);
+	resultText.push(`Tags: ${tagCount}`);
+	resultText.push(`Tags with new value: ${newTagCount}`);
+	resultText.push(`Tags with duplicates: ${tagCount - newTagCount}`);
+
+	const filtersArray: HTMLDivElement[] = [];
 	hostsMap.forEach((value, key) => {
 		filtersArray.push(buildFilter({ label: key, data: value }));
 	});
+	resultText.push(`Tags with unique value: ${tagColorMap.size}`);
+	resultText.push(`Total filters: ${filtersArray.length}`);
 
 	filtersArray.push(buildFilter()); // Construct a spacer at the bottom
 	filtersTable.value().replaceChildren(...filtersArray);
+
+	parseResults.value_as<HTMLUListElement>().replaceChildren(...resultText.map(value => {
+		const li = document.createElement("li");
+		li.innerText = value;
+		return li;
+	}));
 };
 
-filtersTable.value().appendChild(buildFilter({ label: "example.com", data: { regex: new RegExp("example.com"), tags: ["test_1", "test_2", "test_3", "test_4", "test_5", "test_6", "test_7", "test_8", "test_9", "test_10"] } })); // TODO: Remove after testing is done
-filtersTable.value().appendChild(buildFilter({})); // TODO: Remove after testing is done
+filtersTable.value().appendChild(buildFilter({
+	label: "example.com",
+	data: {
+		regex: new RegExp("example.com"),
+		tags: [
+			"test_1",
+			"test_2",
+			"test_3",
+			"test_4",
+			"test_5",
+			"test_6",
+			"test_7",
+			"test_8",
+			"test_9",
+			"test_10",
+		]
+	},
+})); // TODO: Remove after testing is done
+filtersTable.value().appendChild(buildFilter()); // TODO: Remove after testing is done
 
 (tabs.value().children[1] as HTMLElement).click();

@@ -37,6 +37,14 @@ export class Optional<T> {
         return default_value;
     }
 
+    value_as = <U>(): Exclude<U, undefined> => {
+        if (this.data !== null) {
+            return this.data as Exclude<U, undefined>;
+        }
+
+        throw new Error("Bad Optional cast and access");
+    }
+
     swap = (other: Optional<T>) => {
         const temp = this.data;
         this.data = other.data;
