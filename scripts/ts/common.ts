@@ -1,17 +1,17 @@
 export class Optional<T> {
-    private data: Exclude<T, null> | undefined = undefined;
+    private data: Exclude<T, undefined> | null = null;
 
-    constructor(input: T) {
+    constructor(input: Exclude<T, undefined> | null) {
         this.assign(input);
     }
 
-    assign = (other: any) => {
-        if (other === null) {
-            throw new Error("Cannot assign null to Optional");
+    assign = (other: Exclude<T, undefined> | null) => {
+        if (other === undefined) {
+            throw new Error("Cannot assign undefined to Optional");
         }
 
-        if (other === undefined) {
-            throw new Error("Should not assign undefined to Optional. Use the reset member function instead");
+        if (other === null) {
+            console.warn("Should not assign null to Optional. Use the reset member function instead");
         }
 
         this.data = other;
@@ -21,8 +21,8 @@ export class Optional<T> {
         return (this.data !== null && this.data !== undefined);
     }
 
-    value = (): Exclude<T, null> => {
-        if (this.data !== null && this.data !== undefined) {
+    value = (): Exclude<T, undefined> => {
+        if (this.data !== null) {
             return this.data;
         }
 
@@ -30,7 +30,7 @@ export class Optional<T> {
     }
 
     value_or = (default_value: T): T => {
-        if (this.data !== null && this.data !== undefined) {
+        if (this.data !== null) {
             return this.data;
         }
 
@@ -44,6 +44,6 @@ export class Optional<T> {
     }
 
     reset = () => {
-        this.data = undefined;
+        this.data = null;
     }
 }
