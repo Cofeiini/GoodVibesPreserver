@@ -122,7 +122,7 @@ parseButton.value_as<HTMLButtonElement>().onclick = (_event) => {
 
 	const dataCount = dataLines.length;
 	resultText.push(`Lines with data: ${dataCount}`);
-	resultText.push(`Lines with comments: ${processedCount - dataCount}`);
+	resultText.push(`Lines skipped: ${processedCount - dataCount}`);
 
 	let hostCount = 0;
 	let tagCount = 0;
@@ -145,6 +145,7 @@ parseButton.value_as<HTMLButtonElement>().onclick = (_event) => {
 	resultText.push(`Hostnames: ${hostCount}`);
 	resultText.push(`Hostnames with errors: ${dataCount - hostCount}`);
 	resultText.push(`Hostnames with duplicates: ${hostCount - hostsMap.size}`);
+	resultText.push(`Hostnames with unique value: ${hostsMap.size}`);
 	resultText.push(`Tags: ${tagCount}`);
 	resultText.push(`Tags with new value: ${newTagCount}`);
 	resultText.push(`Tags with duplicates: ${tagCount - newTagCount}`);
