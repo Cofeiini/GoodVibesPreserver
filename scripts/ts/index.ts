@@ -3,11 +3,6 @@ import {Optional} from "./common";
 import {ChipInput} from "./chip-input";
 
 const tabs = new Optional(document.querySelector("#editorTabs"));
-const hostsTextArea = new Optional(document.querySelector("#hostsTextArea"));
-const parseButton = new Optional(document.querySelector("#hostsParseButton"));
-const parseResults = new Optional(document.querySelector("#hostsResults"));
-const filters = new Optional(document.querySelector("#filtersEditor"));
-const filtersTable = new Optional(filters.value().querySelector("#filtersTable"));
 
 [
 	{
@@ -40,6 +35,8 @@ const filtersTable = new Optional(filters.value().querySelector("#filtersTable")
 
 	tabs.value().appendChild(button);
 });
+
+const filtersTable = new Optional(document.querySelector("#filtersTable"));
 
 const buildFilter = ({ label, data }: filterType = {}) => {
 	const container = document.createElement("div");
@@ -107,13 +104,20 @@ const buildFilter = ({ label, data }: filterType = {}) => {
 	return container;
 };
 
-parseButton.value_as<HTMLButtonElement>().onclick = (_event) => {
+const hostsTextArea = new Optional(document.querySelector("#hostsTextArea"));
+const parseResults = new Optional(document.querySelector("#hostsResults"));
+
+// Use "Optional" here to make sure the value exists and throw an error otherwise
+new Optional(document.querySelector("#hostsParseButton")).value_as<HTMLButtonElement>().onclick = (_event) => {
 	tagColorMap.clear();
 
 	const resultText: string[] = [];
 
 	// There is possibly going to be a lot of data, so this block should free the memory when it's no longer used
-	const allLines = new Optional(hostsTextArea.value_as<HTMLTextAreaElement>().value.trim().split(/\r\n|\n/).map(line => line.trim()));
+	const allLines = new Optional(hostsTextArea.value_as<HTMLTextAreaElement>().value.trim()
+		.split(/\r\n|\n/)
+		.map(line => line.trim())
+	);
 	const processedCount = allLines.value().length;
 	resultText.push(`Lines: ${processedCount}`);
 
