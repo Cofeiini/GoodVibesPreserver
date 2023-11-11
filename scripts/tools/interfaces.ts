@@ -30,3 +30,8 @@ export interface githubResponse {
         "self": string
     }
 }
+
+const getHostname = (URL : string) : string | undefined =>{
+    const hostname : string | undefined = /http(s)?:\/\/?(\w+\.\w{2,})/.exec(URL)?.[3];
+    if(hostname) return hostname;
+}

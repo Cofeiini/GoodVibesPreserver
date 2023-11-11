@@ -1,18 +1,19 @@
 const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 import { urlFilter, githubResponse } from "../tools/interfaces";
 import { filterToken } from "../tools/token";
+import { messagingMap, message, Action } from "../tools/messaging";
 
 let blockedElementsSet : Set<{blockedElement : Element, recoverID : number, url : string}> = new Set();
 let blockedElementsCounter : number = 0;
+let blockedUrls : Set<string> = new Set();
 
 const makeWarning = (blockedElement : Element) : string => { 
-    const elementWidth : number = (blockedElement as HTMLElement).offsetWidth;
-    const elementHeight : number = (blockedElement as HTMLElement).offsetHeight;
-    if(elementWidth <= 134 || elementHeight <= 52)
+    
+    if(analyzeElement(blockedElement))
     {
         blockedElementsSet.add({blockedElement : blockedElement, recoverID: blockedElementsCounter, url: blockedElement.getAttribute('href') || blockedElement.getAttribute('src') || ""})
         return         `
-            <div id="blocked-container-${blockedElementsCounter}" style="padding: 2px; background-color: rgb(31,31,31); border-radius: 20px; width: ${elementWidth}px; height: ${elementHeight}px; display: flex; align-items: center; justify-content:center">
+            <div id="blocked-container-${blockedElementsCounter}" style="padding: 2px; background-color: rgb(31,31,31); border-radius: 20px; width: ${(blockedElement as HTMLElement).offsetWidth}px; height: ${(blockedElement as HTMLElement).offsetHeight}px; display: flex; align-items: center; justify-content:center">
             <button id="recover-button-${blockedElementsCounter}" style="font-family: Arial, Helvetica, sans-serif; font-weight: bold">
             Recover
             </button>
@@ -60,10 +61,18 @@ const makeWarning = (blockedElement : Element) : string => {
     
 }
 
+const analyzeElement = (element: Element) : boolean =>{
+    const elementHTML : HTMLElement = (element as HTMLElement);
+    if(elementHTML.offsetWidth <= 134 || elementHTML.offsetHeight <= 52) { return true }
+    return false;
+}
+
 const analyzeDOM = () : void => {
     const hrefElements : NodeListOf<Element> = document.querySelectorAll('[href]');
     const srcElements : NodeListOf<Element> = document.querySelectorAll('[src]');
     let elementSet : Set<{element : Element, url : string | null}> = new Set();
+    const activeRegEx : RegExp = new RegExp(`${window.location.hostname}`);
+    console.log(activeRegEx);
 
     hrefElements.forEach(element =>{
         elementSet.add({
@@ -91,10 +100,12 @@ const analyzeDOM = () : void => {
     })
     .then((filters: urlFilter[]) =>{
         filters.forEach(filter => {
+            console.log(filter.pattern);
+            const filterRegExp = new RegExp(filter.pattern);
             elementSet.forEach(DOMElement => {
                 if(DOMElement.url)
                 {
-                    if(new RegExp(filter.pattern).test(DOMElement.url))
+                    if(blockedUrls.has(DOMElement.url))
                     {
                         console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
                         blockedElementsCounter++;                     
@@ -102,7 +113,19 @@ const analyzeDOM = () : void => {
                         DOMElement.element.parentNode?.replaceChild(warningSign,DOMElement.element);
                         document.getElementById(`recover-button-${blockedElementsCounter}`)?.addEventListener('click',recoverElement);
                         console.log("Blocked content.")
+                        return;
                     }
+
+                    if(filterRegExp.test(DOMElement.url) && !activeRegEx.test(DOMElement.url))
+                    {
+                        blockedUrls.add(DOMElement.url);
+                        console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
+                        blockedElementsCounter++;                     
+                        const warningSign : DocumentFragment = document.createRange().createContextualFragment(makeWarning(DOMElement.element));
+                        DOMElement.element.parentNode?.replaceChild(warningSign,DOMElement.element);
+                        document.getElementById(`recover-button-${blockedElementsCounter}`)?.addEventListener('click',recoverElement);
+                        console.log("Blocked content.")
+                    } 
                 }
             })
         })
@@ -131,19 +154,44 @@ const recoverElement = (event: Event) : void =>{
     })
 }
 
-browser.runtime.onMessage.addListener((message, sender, sendResponse) =>{
-    console.log("Message received in content");
-    if(message.action === "add_listener")
-    {
-        console.log("Add listener called");
-        document.getElementById("proceedanyways")?.addEventListener('click', () =>{
-            console.log("Proceed button pressed");
-            let selfUrl : string = window.location.href;
-            browser.runtime.sendMessage({data: {action: "redirect", url: selfUrl, id: message.id}})
-        })
-    }
-    return Promise.resolve("Message received");
+// Messaging system
+
+const addListener = (message : message) =>{
+    console.log("Add listener called");
+    document.getElementById("proceedanyways")?.addEventListener('click', () =>{ // Starts listening to the "proceed anyways" button on the active tab.
+        console.log("Proceed button pressed");
+        let selfUrl : string = window.location.href;
+        const redirectMessage = {
+            action: Action.redirect,
+            data:{
+                content:{
+                    url: selfUrl,
+                    id: message.data.content.id
+                }
+            }
+        }
+        browser.runtime.sendMessage(redirectMessage) // Sends a message to the background script to redirect to the blocked website.
+    })
+}
+
+browser.runtime.onMessage.addListener((message : message, sender, sendResponse) =>{
+    console.log(message.action);
+    const requestedAction = messageMap.get(message.action);
+    requestedAction(message);
 })
+
+const messageMap = new messagingMap([
+    [Action.add_listener,addListener]
+])
+
+//
+
+const mutationObserver = new MutationObserver(analyzeDOM);
+
+const observerConfig = { childList: true, subtree: true, attributes: true, characterData: true};
+
+mutationObserver.observe(document,observerConfig);
+
 
 if(document.readyState !== "loading")
 {

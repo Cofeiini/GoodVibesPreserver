@@ -1,24 +1,79 @@
 import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
-const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
-import { filterToken } from "../tools/interfaces";
+import { filterToken } from "../tools/token";
 import { urlFilter, githubResponse, filterResults } from "../tools/interfaces";
-//Extension status
+import { messagingMap, message, Action } from "../tools/messaging";
+const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 
-let extensionOn : boolean = true;
+type whitelist = {
+    whitelist: string[]
+}
 
-browser.runtime.onMessage.addListener((message : any) =>{
-    if(message.data.action === "redirect")
+
+const updateWhitelist = (url : string) : void =>{
+    var whitelistString = window.sessionStorage.getItem("whitelist");
+    var whitelistArray : string[] = [];
+    if(whitelistString) // Checks for URLs already temporarily stored, if not it just creates a new whitelist with the current URL being whitelisted.
     {
-        console.log("Proceed called");
-        let targetId : number = Number(message.data.id);
-        let targetUrl : string = message.data.url;
-        skippingTabs.add(targetId);
-        browser.tabs.update(targetId, {url: targetUrl});
+        var whitelistObject : whitelist = JSON.parse(whitelistString);
+        whitelistArray = whitelistObject.whitelist;
+        whitelistArray.push(url);
+        const updatedWhitelist : whitelist = {
+            whitelist: whitelistArray
+        }
+        const updatedWhitelistString = JSON.stringify(updatedWhitelist);
+        window.sessionStorage.setItem("whitelist",updatedWhitelistString);
+        return;
     }
+
+    whitelistArray.push(url);
+    const newWhitelist : whitelist = {
+        whitelist: whitelistArray
+    }
+    const newWhitelistString = JSON.stringify(newWhitelist);
+    window.sessionStorage.setItem("whitelist",newWhitelistString);
+}
+
+
+
+//Messaging system
+
+const messageTab = (tabId: number) =>{
+    const tabMessage : message = {
+        action: Action.add_listener,
+        data: {
+            content: {
+                id: tabId
+            }
+        }
+    }
+    browser.tabs.sendMessage(tabId,tabMessage);
+}
+
+const redirectTab = (message: message) =>{
+    let targetId : number = Number(message.data.content.id);
+    let targetUrl : string = message.data.content.url;
+    updateWhitelist(targetUrl); // Updates session storage whitelist so the user doesn't has to keep skipping the filter warning.
+    browser.tabs.update(targetId, {url: targetUrl});
+}
+
+browser.runtime.onMessage.addListener((message : message) =>{
+    const requestedAction = messageMap.get(message.action);
+    requestedAction(message)
 })
 
+const messageMap = new messagingMap([
+    [Action.redirect,redirectTab]
+])
+
+
+browser.tabs.onUpdated.addListener((tabId,changeInfo,tab) =>{
+    if(changeInfo.status === 'complete')
+    {
+        messageTab(tabId);
+    }
+})
 
 //Local storage setup
 
@@ -76,16 +131,27 @@ const storeUrlData = () => {
 
 // URL blocking
 
-const isBlockedUrl = async (hostname: string, url: URL, ignoringFilter : boolean) : Promise<filterResults> => {
-    let isWhitelisted : boolean = false;
-    const whitelistStorage = await browser.storage.local.get("whitelist");
-    const whitelist : string[] = whitelistStorage.whitelist;
+const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults> => {
+    let isLocallyWhitelisted, isTemporarilyWhitelisted  = false;
+    const sessionWhitelistString = window.localStorage.getItem("whitelist");
+    let sessionWhitelist : string[] = [];
+    if(sessionWhitelistString)
+    {
+        const sessionWhitelistObject : whitelist = JSON.parse(sessionWhitelistString);
+        sessionWhitelist = sessionWhitelistObject.whitelist;
+    }
+    const localWhitelistStorage = await browser.storage.local.get("whitelist");
+    const localWhitelist : string[] = localWhitelistStorage.whitelist;
 
     const matches : RegExpMatchArray | null = url.toString().match(/(?:www\.)?([\w\-.]+\.\w{2,})/);
     const address : string | undefined = matches?.[0];
-    if(address) { isWhitelisted = whitelist.includes(address) }
+    if(address) {
+        console.log(address); 
+        isLocallyWhitelisted = localWhitelist.includes(address);
+        isTemporarilyWhitelisted = sessionWhitelist.includes(address);
+    }
 
-    if( isWhitelisted || ignoringFilter)
+    if(isLocallyWhitelisted || isTemporarilyWhitelisted)
     {
         return new Promise((resolve,_) => {
             resolve({
@@ -132,11 +198,8 @@ const isBlockedUrl = async (hostname: string, url: URL, ignoringFilter : boolean
     });
 }
 
-let blockedContentTabs : Set<number> = new Set();
-let skippingTabs : Set<number> = new Set();
-
 const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Promise<BlockingResponse> | void => {
-    if(skippingTabs.has(details.tabId)) { skippingTabs.delete(details.tabId); return; }
+    console.log(details.tabId);
     const filter: browser.webRequest.StreamFilter = browser.webRequest.filterResponseData(details.requestId);
     const encoder: TextEncoder = new TextEncoder();
     const url : URL = new URL(details.url);
@@ -149,15 +212,10 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
     }
 
     filter.onstop = () => {
-        const ignoringFilter : boolean = url.searchParams.get("skipfilter") !== null;
-        console.log(ignoringFilter); //debug
-
-        isBlockedUrl(url.hostname, url, ignoringFilter)
+        isBlockedUrl(url.hostname, url)
             .then((filteredURL: filterResults) => {
                 console.log(filteredURL); //debug
                 if(filteredURL.blocked) {
-                    filteredURL.url.searchParams.set("skipfilter", "true");
-                    blockedContentTabs.add(details.tabId);
                     filter.write(encoder.encode(
                     `
                         <html>
@@ -232,22 +290,10 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                 } else {
                     filter.write(buffer);
                 }
-
                 filter.close();
             });
     };
     return { cancel: false };
 }
-
-const messageTab = (tabId : number) =>{
-    if(blockedContentTabs.has(tabId))
-    {
-        browser.tabs.sendMessage(tabId,{action: "add_listener", id: tabId})
-        .then(() => blockedContentTabs.delete(tabId));
-    }
-}
-
-browser.tabs.onUpdated.addListener(messageTab);
-
 
 browser.webRequest.onBeforeRequest.addListener(handleRequest,{ urls: [ "<all_urls>" ], types: [ "main_frame" ] }, [ "blocking" ]);
