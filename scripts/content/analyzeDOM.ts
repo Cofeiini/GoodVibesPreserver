@@ -1,4 +1,4 @@
-const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
+const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json";
 import { urlFilter, githubResponse } from "../tools/interfaces";
 import { filterToken } from "../tools/token";
 import { messagingMap, message, Action } from "../tools/messaging";
@@ -18,6 +18,9 @@ const makeWarning = (blockedElement : Element) : string => {
             Recover
             </button>
             </div>
+const port = browser.runtime.connect({ name: "good-vibes-preserver-content-script" });
+
+const makeWarning = (blockedElement: Element) => {
         `
     }
     else
@@ -171,11 +174,14 @@ const addListener = (message : message) =>{
             }
         }
         browser.runtime.sendMessage(redirectMessage) // Sends a message to the background script to redirect to the blocked website.
+        port.postMessage(redirectMessage); // Sends a message to the background script to redirect to the blocked website.
     })
 }
 
-browser.runtime.onMessage.addListener((message : message, sender, sendResponse) =>{
-    console.log(message.action);
+port.onMessage.addListener((message: any) => {
+    console.log("Content script: onMessage");
+    console.debug(message);
+    console.trace();
     const requestedAction = messageMap.get(message.action);
     requestedAction(message);
 })
@@ -192,9 +198,4 @@ const observerConfig = { childList: true, subtree: true, attributes: true, chara
 
 mutationObserver.observe(document,observerConfig);
 
-
-if(document.readyState !== "loading")
-{
-    analyzeDOM()
-}
-else { document.addEventListener("DOMContentLoaded",analyzeDOM) }
+document.addEventListener("DOMContentLoaded", analyzeDOM);

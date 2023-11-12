@@ -4,7 +4,8 @@ import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
 import { filterToken } from "../tools/token";
 import { urlFilter, githubResponse, filterResults } from "../tools/interfaces";
 import { messagingMap, message, Action } from "../tools/messaging";
-const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
+import Port = browser.runtime.Port;
+const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json";
 
 type whitelist = {
     whitelist: string[]
@@ -14,6 +15,10 @@ type whitelist = {
 const updateWhitelist = (url : string) : void =>{
     var whitelistString = window.sessionStorage.getItem("whitelist");
     var whitelistArray : string[] = [];
+const updateWhitelist = (url: string) : void => {
+    console.log("Background script: updateWhitelist");
+    console.debug(url);
+    console.trace();
     if(whitelistString) // Checks for URLs already temporarily stored, if not it just creates a new whitelist with the current URL being whitelisted.
     {
         var whitelistObject : whitelist = JSON.parse(whitelistString);
@@ -39,17 +44,43 @@ const updateWhitelist = (url : string) : void =>{
 
 //Messaging system
 
-const messageTab = (tabId: number) =>{
-    const tabMessage : message = {
-        action: Action.add_listener,
-        data: {
-            content: {
-                id: tabId
-            }
-        }
+const ports: Map<number, Port> = new Map();
+
+browser.runtime.onConnect.addListener(port => {
+    console.log("Background script: onConnect");
+    console.debug(port);
+    if (port.name !== "good-vibes-preserver-content-script") {
+        return;
     }
-    browser.tabs.sendMessage(tabId,tabMessage);
-}
+
+    if (!port.sender?.tab?.id) {
+        return;
+    }
+    console.trace();
+
+    port.onMessage.addListener((message: any) => {
+        console.log("Background script port: onMessage");
+        console.debug(message);
+        console.trace();
+        const requestedAction = messageMap.get(message.action);
+        requestedAction(message);
+    });
+    port.onDisconnect.addListener(port => {
+        console.log("Background script port: onDisconnect");
+        console.debug(port);
+        if (!port.sender?.tab?.id) {
+            return;
+        }
+        console.trace();
+
+        ports.delete(port.sender.tab.id);
+    });
+
+    const port_id = port.sender.tab.id;
+    port.postMessage({ action: Action.add_listener, data: { content: { id: port_id } } });
+
+    ports.set(port_id, port);
+});
 
 const redirectTab = (message: message) =>{
     let targetId : number = Number(message.data.content.id);
@@ -57,11 +88,6 @@ const redirectTab = (message: message) =>{
     updateWhitelist(targetUrl); // Updates session storage whitelist so the user doesn't has to keep skipping the filter warning.
     browser.tabs.update(targetId, {url: targetUrl});
 }
-
-browser.runtime.onMessage.addListener((message : message) =>{
-    const requestedAction = messageMap.get(message.action);
-    requestedAction(message)
-})
 
 const messageMap = new messagingMap([
     [Action.redirect,redirectTab]
@@ -74,6 +100,8 @@ browser.tabs.onUpdated.addListener((tabId,changeInfo,tab) =>{
         messageTab(tabId);
     }
 })
+    [Action.redirect, redirectTab],
+]);
 
 //Local storage setup
 
