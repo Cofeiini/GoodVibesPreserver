@@ -11,36 +11,24 @@ type whitelist = {
     whitelist: string[]
 }
 
-
-const updateWhitelist = (url : string) : void =>{
-    var whitelistString = window.sessionStorage.getItem("whitelist");
-    var whitelistArray : string[] = [];
 const updateWhitelist = (url: string) : void => {
     console.log("Background script: updateWhitelist");
     console.debug(url);
     console.trace();
+    const whitelistString = window.sessionStorage.getItem("whitelist");
+    let whitelistArray : string[] = [];
     if(whitelistString) // Checks for URLs already temporarily stored, if not it just creates a new whitelist with the current URL being whitelisted.
     {
-        var whitelistObject : whitelist = JSON.parse(whitelistString);
+        const whitelistObject : whitelist = JSON.parse(whitelistString);
         whitelistArray = whitelistObject.whitelist;
+    }
+
+    if (!whitelistArray.includes(url)) {
         whitelistArray.push(url);
-        const updatedWhitelist : whitelist = {
-            whitelist: whitelistArray
-        }
-        const updatedWhitelistString = JSON.stringify(updatedWhitelist);
-        window.sessionStorage.setItem("whitelist",updatedWhitelistString);
-        return;
     }
-
-    whitelistArray.push(url);
-    const newWhitelist : whitelist = {
-        whitelist: whitelistArray
-    }
-    const newWhitelistString = JSON.stringify(newWhitelist);
-    window.sessionStorage.setItem("whitelist",newWhitelistString);
+    console.debug(whitelistArray);
+    window.sessionStorage.setItem("whitelist", JSON.stringify({ whitelist: whitelistArray }));
 }
-
-
 
 //Messaging system
 
@@ -82,24 +70,19 @@ browser.runtime.onConnect.addListener(port => {
     ports.set(port_id, port);
 });
 
-const redirectTab = (message: message) =>{
-    let targetId : number = Number(message.data.content.id);
-    let targetUrl : string = message.data.content.url;
-    updateWhitelist(targetUrl); // Updates session storage whitelist so the user doesn't has to keep skipping the filter warning.
-    browser.tabs.update(targetId, {url: targetUrl});
+const redirectTab = (message: message) => {
+    console.log("Background script: redirectTab");
+    console.debug(message);
+    console.trace();
+
+    const targetId: number = message.data.content.id;
+    const targetUrl: string = message.data.content.url;
+
+    updateWhitelist(targetUrl); // Updates session storage whitelist so the user doesn't have to keep skipping the filter warning.
+    browser.tabs.update(targetId, {url: targetUrl}).then();
 }
 
 const messageMap = new messagingMap([
-    [Action.redirect,redirectTab]
-])
-
-
-browser.tabs.onUpdated.addListener((tabId,changeInfo,tab) =>{
-    if(changeInfo.status === 'complete')
-    {
-        messageTab(tabId);
-    }
-})
     [Action.redirect, redirectTab],
 ]);
 
@@ -128,24 +111,29 @@ const dbRequest : IDBOpenDBRequest = window.indexedDB.open("filterDatabase",2);
 dbRequest.onupgradeneeded = (event) => {
     const database : IDBDatabase = (event.target as IDBOpenDBRequest).result;
     database.createObjectStore('filterList', { keyPath:'id', autoIncrement: true });
-}
+};
 
 dbRequest.onsuccess = (event) => {
     db = (event.target as IDBOpenDBRequest).result;
     storeUrlData();
-}
+};
 
 dbRequest.onerror = (event) => {
     console.log((event.target as IDBRequest).error)
-}
+};
 
 const storeUrlData = () => {
     fetch(filtersUrl,{
         headers: {
-            Authorization:`${filterToken}`
+            Authorization: `${filterToken}`
         }
-    }).then(response => response.json())
-    .then((responseJSON: githubResponse) => {
+    }).then(response => {
+        if (response.status !== 200) {
+            throw new Error(`GitHub responded with an error: ${response.statusText} (${response.status})`);
+        }
+
+        return response.json();
+    }).then((responseJSON: githubResponse) => {
         const filtersString : string = atob(responseJSON.content);
         const IDBFilters : urlFilter[] = JSON.parse(filtersString);
         const transaction : IDBTransaction = db.transaction(['filterList'],'readwrite');
@@ -153,7 +141,7 @@ const storeUrlData = () => {
         IDBFilters.forEach((filter: urlFilter) => {
             storeObject.add(filter);
         });
-    })
+    });
 }
 
 
@@ -246,7 +234,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                 if(filteredURL.blocked) {
                     filter.write(encoder.encode(
                     `
-                        <html>
+                        <html lang="en">
                             <body>
                                 <div class="main-container">
                                     <div class="website-warning">
