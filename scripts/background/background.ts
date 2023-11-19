@@ -3,6 +3,7 @@ import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
 import { filterToken } from "../tools/token";
 import { urlFilter, githubResponse, filterResults } from "../tools/interfaces";
+import { Optional } from "../tools/optional";
 import { messagingMap, message, Action } from "../tools/messaging";
 const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 
@@ -18,62 +19,17 @@ const updateWhitelist = (url : string) : void =>{
     {
         var whitelistObject : whitelist = JSON.parse(whitelistString);
         whitelistArray = whitelistObject.whitelist;
-        whitelistArray.push(url);
-        const updatedWhitelist : whitelist = {
-            whitelist: whitelistArray
-        }
-        const updatedWhitelistString = JSON.stringify(updatedWhitelist);
-        window.sessionStorage.setItem("whitelist",updatedWhitelistString);
-        return;
     }
 
-    whitelistArray.push(url);
-    const newWhitelist : whitelist = {
-        whitelist: whitelistArray
-    }
-    const newWhitelistString = JSON.stringify(newWhitelist);
-    window.sessionStorage.setItem("whitelist",newWhitelistString);
-}
-
-
-
-//Messaging system
-
-const messageTab = (tabId: number) =>{
-    const tabMessage : message = {
-        action: Action.add_listener,
-        data: {
-            content: {
-                id: tabId
-            }
-        }
-    }
-    browser.tabs.sendMessage(tabId,tabMessage);
-}
-
-const redirectTab = (message: message) =>{
-    let targetId : number = Number(message.data.content.id);
-    let targetUrl : string = message.data.content.url;
-    updateWhitelist(targetUrl); // Updates session storage whitelist so the user doesn't has to keep skipping the filter warning.
-    browser.tabs.update(targetId, {url: targetUrl});
-}
-
-browser.runtime.onMessage.addListener((message : message) =>{
-    const requestedAction = messageMap.get(message.action);
-    requestedAction(message)
-})
-
-const messageMap = new messagingMap([
-    [Action.redirect,redirectTab]
-])
-
-
-browser.tabs.onUpdated.addListener((tabId,changeInfo,tab) =>{
-    if(changeInfo.status === 'complete')
+    if(!whitelistArray.includes(url))
     {
-        messageTab(tabId);
+        whitelistArray.push(url);
     }
-})
+
+    window.sessionStorage.setItem("whitelist",JSON.stringify({ whitelist: whitelistArray }));
+}
+
+
 
 //Local storage setup
 
@@ -94,7 +50,7 @@ browser.runtime.onInstalled.addListener(() =>{
 
 // IndexedDB filters setup
 
-let db : IDBDatabase;
+let filters_database : IDBDatabase;
 const dbRequest : IDBOpenDBRequest = window.indexedDB.open("filterDatabase",2);
 
 dbRequest.onupgradeneeded = (event) => {
@@ -103,7 +59,7 @@ dbRequest.onupgradeneeded = (event) => {
 }
 
 dbRequest.onsuccess = (event) => {
-    db = (event.target as IDBOpenDBRequest).result;
+    filters_database = (event.target as IDBOpenDBRequest).result;
     storeUrlData();
 }
 
@@ -120,7 +76,7 @@ const storeUrlData = () => {
     .then((responseJSON: githubResponse) => {
         const filtersString : string = atob(responseJSON.content);
         const IDBFilters : urlFilter[] = JSON.parse(filtersString);
-        const transaction : IDBTransaction = db.transaction(['filterList'],'readwrite');
+        const transaction : IDBTransaction = filters_database.transaction(['filterList'],'readwrite');
         const storeObject : IDBObjectStore = transaction.objectStore('filterList');
         IDBFilters.forEach((filter: urlFilter) => {
             storeObject.add(filter);
@@ -128,12 +84,48 @@ const storeUrlData = () => {
     })
 }
 
+//Messaging system
+
+const sendFilters = (message : message, sender : browser.runtime.MessageSender) =>{
+    const senderId = sender.tab?.id || 0;
+    const transaction: IDBTransaction = filters_database.transaction(['filterList'], 'readonly');
+    const storeObject: IDBObjectStore = transaction.objectStore('filterList');
+    const getDataRequest: IDBRequest = storeObject.getAll();
+    getDataRequest.onsuccess = (event: Event) => {
+        const data : urlFilter[] = (event.target as IDBRequest).result;
+        console.log("Asked for filters.")
+        browser.tabs.sendMessage(senderId,{ action: Action.send_filters, data: {content: data } })
+    }
+}   
+
+const redirectTab = (message: message, sender: browser.runtime.MessageSender) =>{
+    if(sender.tab?.id)
+    {
+        let targetUrl : string = message.data.content.url;
+        console.log(targetUrl);
+        const urlParts = targetUrl.split('/');
+        updateWhitelist(urlParts[2]); // Updates session storage whitelist so the user doesn't has to keep skipping the filter warning.
+        browser.tabs.update(sender.tab.id, {url: targetUrl});
+    }
+}
+
+browser.runtime.onMessage.addListener((message : message, sender : browser.runtime.MessageSender) =>{
+    console.log(`Requested Action: ${message.action}`);
+    const requestedAction = messageMap.get(message.action);
+    requestedAction(message,sender)
+})
+
+const messageMap = new messagingMap([
+    [Action.redirect,redirectTab],
+    [Action.get_filters,sendFilters],
+])
+
 
 // URL blocking
 
 const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults> => {
     let isLocallyWhitelisted, isTemporarilyWhitelisted  = false;
-    const sessionWhitelistString = window.localStorage.getItem("whitelist");
+    const sessionWhitelistString = window.sessionStorage.getItem("whitelist");
     let sessionWhitelist : string[] = [];
     if(sessionWhitelistString)
     {
@@ -150,6 +142,8 @@ const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults>
         isLocallyWhitelisted = localWhitelist.includes(address);
         isTemporarilyWhitelisted = sessionWhitelist.includes(address);
     }
+    console.log(`Session whitelist: ${sessionWhitelistString}`);
+    console.log(`Temporarily whitelisted: ${isTemporarilyWhitelisted}`);
 
     if(isLocallyWhitelisted || isTemporarilyWhitelisted)
     {
@@ -166,9 +160,8 @@ const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults>
     const blockedAmountStorage = await browser.storage.local.get("blockedAmount");
     let blockedAmount : number = blockedAmountStorage.blockedAmount;
 
-    const transaction: IDBTransaction = db.transaction(['filterList'], 'readonly');
+    const transaction: IDBTransaction = filters_database.transaction(['filterList'], 'readonly');
     const storeObject: IDBObjectStore = transaction.objectStore('filterList');
-
     const promise: Promise<filterResults> = new Promise((resolve, _) => {
         const getDataRequest: IDBRequest = storeObject.getAll();
         getDataRequest.onsuccess = (event: Event) => {
@@ -216,6 +209,20 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
             .then((filteredURL: filterResults) => {
                 console.log(filteredURL); //debug
                 if(filteredURL.blocked) {
+                    browser.tabs.executeScript(details.tabId,{code: `
+                    document.getElementById("proceedanyways")?.addEventListener('click', () =>{
+                        console.log("Proceed button pressed");
+                        let selfUrl = window.location.href;
+                        const redirectMessage = {
+                            action: Action.redirect,
+                            data:{
+                                content:{
+                                    url: selfUrl,
+                                }
+                            }
+                        }
+                        browser.runtime.sendMessage(redirectMessage)
+                    })`});
                     filter.write(encoder.encode(
                     `
                         <html>
