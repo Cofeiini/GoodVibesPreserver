@@ -1,10 +1,10 @@
 import { urlFilter } from "./interfaces"
 
-export enum Action {
-    get_filters = "GET_FILTERS",
-    send_filters = "SEND_FILTERS",
-    redirect = "REDIRECT",
-    add_listener = "ADD_LISTENER",
+export enum Action{
+    get_filters,
+    send_filters,
+    redirect,
+    add_listener,
 }
 
 export type message = {
