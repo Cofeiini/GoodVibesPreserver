@@ -7,6 +7,31 @@ let blockedElementsSet : Set<{blockedElement : Element, recoverID : number, url 
 let blockedElementsCounter : number = 0;
 let blockedUrls : Set<string> = new Set();
 
+// Messaging system
+
+let filters : urlFilter[];
+
+const setupFilters = (message : message) =>{
+    filters = message.data.content;
+}
+
+const fetchFilters = () => {
+    console.log("Fetch filters called.");
+    browser.runtime.sendMessage({ action: Action.get_filters, data: {} });
+}
+
+browser.runtime.onMessage.addListener((message,sender) =>{
+    console.log(message.action);
+    const requestedAction = messageMap.get(message.action);
+    requestedAction(message);
+})
+
+const messageMap = new messagingMap([
+    [Action.send_filters,setupFilters]
+])
+
+//
+
 const makeWarning = (blockedElement : Element) : string => { 
     
     if(analyzeElement(blockedElement))
@@ -87,52 +112,41 @@ const analyzeDOM = () : void => {
         })
     })
 
-    fetch(filtersUrl,{
-        headers: {
-            Authorization:`${filterToken}`
-        }
-    })
-    .then( response => response.json())
-    .then((responseJSON: githubResponse) => {
-        const filtersString : string = atob(responseJSON.content);
-        const filters : urlFilter[] = JSON.parse(filtersString)
-        return filters;
-    })
-    .then((filters: urlFilter[]) =>{
-        filters.forEach(filter => {
-            console.log(filter.pattern);
-            const filterRegExp = new RegExp(filter.pattern);
-            elementSet.forEach(DOMElement => {
-                if(DOMElement.url)
+    filters.forEach(filter => {
+        const filterRegExp = new RegExp(filter.pattern);
+        elementSet.forEach(DOMElement => {
+            if(DOMElement.url)
+            {
+                if(blockedUrls.has(DOMElement.url) && !DOMElement.element.hasAttribute('blocked-identifier'))
                 {
-                    if(blockedUrls.has(DOMElement.url))
-                    {
-                        console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
-                        blockedElementsCounter++;                     
-                        const warningSign : DocumentFragment = document.createRange().createContextualFragment(makeWarning(DOMElement.element));
-                        DOMElement.element.parentNode?.replaceChild(warningSign,DOMElement.element);
-                        document.getElementById(`recover-button-${blockedElementsCounter}`)?.addEventListener('click',recoverElement);
-                        console.log("Blocked content.")
-                        return;
-                    }
-
-                    if(filterRegExp.test(DOMElement.url) && !activeRegEx.test(DOMElement.url))
-                    {
-                        blockedUrls.add(DOMElement.url);
-                        console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
-                        blockedElementsCounter++;                     
-                        const warningSign : DocumentFragment = document.createRange().createContextualFragment(makeWarning(DOMElement.element));
-                        DOMElement.element.parentNode?.replaceChild(warningSign,DOMElement.element);
-                        document.getElementById(`recover-button-${blockedElementsCounter}`)?.addEventListener('click',recoverElement);
-                        console.log("Blocked content.")
-                    } 
+                    console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
+                    blockedElementsCounter++;
+                    DOMElement.element.setAttribute('blocked-identifier','blocked');                      
+                    const warningSign : DocumentFragment = document.createRange().createContextualFragment(makeWarning(DOMElement.element));
+                    DOMElement.element.parentNode?.replaceChild(warningSign,DOMElement.element);
+                    document.getElementById(`recover-button-${blockedElementsCounter}`)?.addEventListener('click',recoverElement);
+                    console.log("Blocked content.")
+                    return;
                 }
-            })
+
+                if(filterRegExp.test(DOMElement.url) && !activeRegEx.test(DOMElement.url) && !DOMElement.element.hasAttribute('blocked-identifier'))
+                {
+                    blockedUrls.add(DOMElement.url);
+                    console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
+                    blockedElementsCounter++;
+                    DOMElement.element.setAttribute('blocked-identifier','blocked');                    
+                    const warningSign : DocumentFragment = document.createRange().createContextualFragment(makeWarning(DOMElement.element));
+                    DOMElement.element.parentNode?.replaceChild(warningSign,DOMElement.element);
+                    document.getElementById(`recover-button-${blockedElementsCounter}`)?.addEventListener('click',recoverElement);
+                    console.log("Blocked content.")
+                } 
+            }
         })
     })
 }
 
 const recoverElement = (event: Event) : void =>{
+    console.log("Recover element called");
     const recoverButtonHTML : HTMLElement = event.target as HTMLElement;
     const regexID : RegExpExecArray | null = /recover-button-(\d+)/.exec(recoverButtonHTML.getAttribute("id") || "");
     const recoverID : number = Number(regexID?.at(1));
@@ -142,49 +156,17 @@ const recoverElement = (event: Event) : void =>{
         {
             if(blockedContainer)
             {
+                console.log(elem.blockedElement);
                 var recover : boolean = window.confirm(`Do you want to recover this element? \n The source of the element comes from a blocked URL: ${elem.url}`);
                 if(recover)
                 {
                     blockedContainer.parentNode?.replaceChild(elem.blockedElement,blockedContainer);   
                 }
-
                 return;
             }
         }
     })
 }
-
-// Messaging system
-
-const addListener = (message : message) =>{
-    console.log("Add listener called");
-    document.getElementById("proceedanyways")?.addEventListener('click', () =>{ // Starts listening to the "proceed anyways" button on the active tab.
-        console.log("Proceed button pressed");
-        let selfUrl : string = window.location.href;
-        const redirectMessage = {
-            action: Action.redirect,
-            data:{
-                content:{
-                    url: selfUrl,
-                    id: message.data.content.id
-                }
-            }
-        }
-        browser.runtime.sendMessage(redirectMessage) // Sends a message to the background script to redirect to the blocked website.
-    })
-}
-
-browser.runtime.onMessage.addListener((message : message, sender, sendResponse) =>{
-    console.log(message.action);
-    const requestedAction = messageMap.get(message.action);
-    requestedAction(message);
-})
-
-const messageMap = new messagingMap([
-    [Action.add_listener,addListener]
-])
-
-//
 
 const mutationObserver = new MutationObserver(analyzeDOM);
 
@@ -195,6 +177,8 @@ mutationObserver.observe(document,observerConfig);
 
 if(document.readyState !== "loading")
 {
-    analyzeDOM()
+    fetchFilters();
 }
-else { document.addEventListener("DOMContentLoaded",analyzeDOM) }
+else { 
+    document.addEventListener("DOMContentLoaded",fetchFilters);
+}
