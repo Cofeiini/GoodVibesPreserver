@@ -4,7 +4,7 @@ export enum Action{
     get_filters,
     send_filters,
     redirect,
-    add_listener,
+    analyze_element,
 }
 
 export type message = {
