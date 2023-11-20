@@ -2,6 +2,16 @@ const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPres
 import { urlFilter, githubResponse } from "../tools/interfaces";
 import { messagingMap, message, Action } from "../tools/messaging";
 
+
+/**
+ *  @blockedElementsSet - represents the Set where the blocked elements in the document are stored to recover them if the user wants to
+ * 
+ *  @blockedElementsCounter - represents the amount of blocked elements in the @blockedElementsSet
+ * 
+ *  When blocking an element, the element will be stored on the @blockedElementsSet and the recoverID will be the current @blockedElementsCounter value
+ *  When recovering an element the function @recoverElement use the ID that we give to the warning sign with the @blockedElements counter as index in the @blockedElementsSet
+**/
+
 let blockedElementsSet : Set<{blockedElement : Element, recoverID : number, url : string}> = new Set();
 let blockedElementsCounter : number = 0;
 
@@ -32,7 +42,7 @@ const messageMap = new messagingMap([
 
 const makeWarning = (blockedElement : Element) : string => { 
     
-    if(analyzeElement(blockedElement))
+    if(analyzeElement(blockedElement)) // This will replace element with a smaller version of the warning sign.
     {
         blockedElementsSet.add({blockedElement : blockedElement, recoverID: blockedElementsCounter, url: blockedElement.getAttribute('href') || blockedElement.getAttribute('src') || ""})
         return         `
@@ -43,7 +53,7 @@ const makeWarning = (blockedElement : Element) : string => {
             </div>
         `
     }
-    else
+    else // This will replace the element with the regular version of the warning sign.
     {
         blockedElementsSet.add({blockedElement: blockedElement, recoverID: blockedElementsCounter, url: blockedElement.getAttribute('href') || blockedElement.getAttribute('src') || ""})
         return`
@@ -84,9 +94,17 @@ const makeWarning = (blockedElement : Element) : string => {
     
 }
 
+
+/**
+ * 
+ * @param element represents the element that the function will analyze its dimensions.
+ * 
+ * @returns { boolean } for telling whether the warning sign should be the default or smaller one.
+ * 
+ */
 const analyzeElement = (element: Element) : boolean =>{
     const elementHTML : HTMLElement = (element as HTMLElement);
-    if(elementHTML.offsetWidth <= 134 || elementHTML.offsetHeight <= 52) { return true }
+    if(elementHTML.offsetWidth <= 134 || elementHTML.offsetHeight <= 52) { return true } // 134 pixels of width and 52 pixels of height is the minimum dimensions for the warning sign to look correctly.
     return false;
 }
 
@@ -112,11 +130,11 @@ const analyzeDOM = () : void => {
     filters.forEach(filter => {
         const filterRegExp = new RegExp(filter.pattern);
         elementSet.forEach(DOMElement => {
-            if(DOMElement.url)
+            const elementUrl = DOMElement.url?.split('/')[2];
+            if(elementUrl)
             {
-                if(filterRegExp.test(DOMElement.url) && !activeRegEx.test(DOMElement.url) && !DOMElement.element.hasAttribute('blocked-identifier'))
+                if(filterRegExp.test(elementUrl) && !activeRegEx.test(elementUrl) && !DOMElement.element.hasAttribute('blocked-identifier'))
                 {
-                    console.log(`Blocked test: ${DOMElement.url.split('/').at(2)}`);
                     console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
                     blockedElementsCounter++;
                     DOMElement.element.setAttribute('blocked-identifier','blocked');                    
