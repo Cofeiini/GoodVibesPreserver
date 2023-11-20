@@ -1,14 +1,10 @@
 import { urlFilter, githubResponse } from "../tools/interfaces";
 import { messagingMap, message, Action } from "../tools/messaging";
 
-let blockedElementsSet : Set<{blockedElement : Element, recoverID : number, url : string}> = new Set();
-let blockedElementsCounter : number = 0; 
-
-
-let filters : urlFilter[];
-
 
 // Messaging system
+
+let filters : urlFilter[];
 
 const setupFilters = (message : message) =>{
     filters = message.data.content;
@@ -31,7 +27,11 @@ const messageMap = new messagingMap([
 
 //
 
+
 // Element filtering
+
+let blockedElementsSet : Set<{blockedElement : Element, recoverID : number, url : string}> = new Set();
+let blockedElementsCounter : number = 0; 
 
 /**
  * 
@@ -129,7 +129,7 @@ const analyzeDOM = () : void => {
     filters.forEach(filter => {
         const filterRegExp = new RegExp(filter.pattern);
         elementSet.forEach(DOMElement => {
-            const elementUrl = DOMElement.url?.split('/')[2];
+            const elementUrl = DOMElement.url?.split('/')[2]; // TODO: rework filters, probably add a '^' on the beginning of the pattern because this line is needed to avoid matching URLs with other URLs in the URL parameters.
             if(elementUrl)
             {
                 if(filterRegExp.test(elementUrl) && !activeRegEx.test(elementUrl) && !DOMElement.element.hasAttribute('blocked-identifier'))
@@ -172,6 +172,7 @@ const recoverElement = (event: Event) : void =>{
 }
 
 //
+
 
 // Mutation observer setup.
 
