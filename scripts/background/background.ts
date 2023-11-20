@@ -7,6 +7,9 @@ import { Optional } from "../tools/optional";
 import { messagingMap, message, Action } from "../tools/messaging";
 const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 
+
+// Session whitelist 
+
 type whitelist = {
     whitelist: string[]
 }
@@ -29,6 +32,7 @@ const updateWhitelist = (url : string) : void =>{
     window.sessionStorage.setItem("whitelist",JSON.stringify({ whitelist: whitelistArray }));
 }
 
+//
 
 
 //Local storage setup
@@ -47,6 +51,9 @@ browser.runtime.onInstalled.addListener(() =>{
         return;
     })
 })
+
+//
+
 
 // IndexedDB filters setup
 
@@ -84,6 +91,9 @@ const storeUrlData = () => {
     })
 }
 
+//
+
+
 //Messaging system
 
 const sendFilters = (message : message, sender : browser.runtime.MessageSender) =>{
@@ -120,8 +130,20 @@ const messageMap = new messagingMap([
     [Action.get_filters,sendFilters],
 ])
 
+//
+
 
 // URL blocking
+
+/**
+ * 
+ * @param hostname Hostname of the URL (The string between https:// and the third /).
+ * 
+ * @param url Complete URL of the request.
+ * 
+ * @returns { Promise<filterResults> } Object containing the data of the analysis of the URL after using filters.
+ * 
+ */
 
 const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults> => {
     let isLocallyWhitelisted, isTemporarilyWhitelisted  = false;
@@ -191,6 +213,14 @@ const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults>
     });
 }
 
+/**
+ * 
+ * @param details Details of the request that the browser is doing.
+ * 
+ * @returns { BlockingResponse | Promise<BlockingResponse> } Object that decides whether the request is being blocked or not.
+ * 
+ */
+
 const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Promise<BlockingResponse> | void => {
     console.log(details.tabId);
     const filter: browser.webRequest.StreamFilter = browser.webRequest.filterResponseData(details.requestId);
@@ -222,7 +252,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                             }
                         }
                         browser.runtime.sendMessage(redirectMessage)
-                    })`});
+                    })`}); // This script needs to be injected due the browser engine sometimes executing the content script too late and a message to the content script will never be received.
                     filter.write(encoder.encode(
                     `
                         <html>
