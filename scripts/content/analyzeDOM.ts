@@ -1,23 +1,14 @@
-const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 import { urlFilter, githubResponse } from "../tools/interfaces";
 import { messagingMap, message, Action } from "../tools/messaging";
 
-
-/**
- *  @blockedElementsSet - represents the Set where the blocked elements in the document are stored to recover them if the user wants to
- * 
- *  @blockedElementsCounter - represents the amount of blocked elements in the @blockedElementsSet
- * 
- *  When blocking an element, the element will be stored on the @blockedElementsSet and the recoverID will be the current @blockedElementsCounter value
- *  When recovering an element the function @recoverElement use the ID that we give to the warning sign with the @blockedElements counter as index in the @blockedElementsSet
-**/
-
 let blockedElementsSet : Set<{blockedElement : Element, recoverID : number, url : string}> = new Set();
-let blockedElementsCounter : number = 0;
+let blockedElementsCounter : number = 0; 
 
-// Messaging system
 
 let filters : urlFilter[];
+
+
+// Messaging system
 
 const setupFilters = (message : message) =>{
     filters = message.data.content;
@@ -40,12 +31,21 @@ const messageMap = new messagingMap([
 
 //
 
+// Element filtering
+
+/**
+ * 
+ * @param blockedElement Element that is being blocked.
+ * 
+ * @returns { string } representing the HTML of the proper warning sign that replaces the element.
+ * 
+ */
+
 const makeWarning = (blockedElement : Element) : string => { 
     
-    if(analyzeElement(blockedElement)) // This will replace element with a smaller version of the warning sign.
+    if(analyzeElement(blockedElement))
     {
-        blockedElementsSet.add({blockedElement : blockedElement, recoverID: blockedElementsCounter, url: blockedElement.getAttribute('href') || blockedElement.getAttribute('src') || ""})
-        return         `
+        return`
             <div id="blocked-container-${blockedElementsCounter}" style="padding: 2px; background-color: rgb(31,31,31); border-radius: 20px; width: ${(blockedElement as HTMLElement).offsetWidth}px; height: ${(blockedElement as HTMLElement).offsetHeight}px; display: flex; align-items: center; justify-content:center">
             <button id="recover-button-${blockedElementsCounter}" style="font-family: Arial, Helvetica, sans-serif; font-weight: bold">
             Recover
@@ -53,9 +53,8 @@ const makeWarning = (blockedElement : Element) : string => {
             </div>
         `
     }
-    else // This will replace the element with the regular version of the warning sign.
+    else
     {
-        blockedElementsSet.add({blockedElement: blockedElement, recoverID: blockedElementsCounter, url: blockedElement.getAttribute('href') || blockedElement.getAttribute('src') || ""})
         return`
         <div  
         id="blocked-container-${blockedElementsCounter}"
@@ -137,6 +136,7 @@ const analyzeDOM = () : void => {
                 {
                     console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
                     blockedElementsCounter++;
+                    blockedElementsSet.add({blockedElement: DOMElement.element, recoverID: blockedElementsCounter, url: DOMElement.element.getAttribute('href') || DOMElement.element.getAttribute('src') || ""});
                     DOMElement.element.setAttribute('blocked-identifier','blocked');                    
                     const warningSign : DocumentFragment = document.createRange().createContextualFragment(makeWarning(DOMElement.element));
                     DOMElement.element.parentNode?.replaceChild(warningSign,DOMElement.element);
@@ -151,9 +151,9 @@ const analyzeDOM = () : void => {
 const recoverElement = (event: Event) : void =>{
     console.log("Recover element called");
     const recoverButtonElement : HTMLElement = event.target as HTMLElement;
-    const regexID : RegExpExecArray | null = /recover-button-(\d+)/.exec(recoverButtonElement.getAttribute("id") || "");
+    const regexID : RegExpExecArray | null = /recover-button-(\d+)/.exec(recoverButtonElement.getAttribute("id") || ""); // Gets the id of the blocked element since we give the same id to the recover button when blocking.
     const recoverID : number = Number(regexID?.at(1));
-    const blockedContainer : HTMLElement | null = document.getElementById(`blocked-container-${recoverID}`);
+    const blockedContainer : HTMLElement | null = document.getElementById(`blocked-container-${recoverID}`); // Gets the proper container that represents the blocked element tied to the button.
     blockedElementsSet.forEach(elem =>{
         if(elem.recoverID === recoverID)
         {
@@ -163,13 +163,15 @@ const recoverElement = (event: Event) : void =>{
                 var recoverPrompt : boolean = window.confirm(`Do you want to recover this element? \n The source of the element comes from a blocked URL: ${elem.url}`);
                 if(recoverPrompt)
                 {
-                    blockedContainer.parentNode?.replaceChild(elem.blockedElement,blockedContainer);   
+                    blockedContainer.parentNode?.replaceChild(elem.blockedElement,blockedContainer);   // Replaces the blocked element warning sign with the original element.
                 }
                 return;
             }
         }
     })
 }
+
+//
 
 // Mutation observer setup.
 
@@ -179,14 +181,12 @@ const observerConfig = { childList: true, subtree: true, attributes: true, chara
 
 mutationObserver.observe(document,observerConfig);
 
+//
 
 
 // Fetchs filters as soon as the website finishes loading.
 
-if(document.readyState !== "loading")
-{
+if(document.readyState !== "loading"){
     fetchFilters();
 }
-else { 
-    document.addEventListener("DOMContentLoaded",fetchFilters);
-}
+else {   document.addEventListener("DOMContentLoaded",fetchFilters);    }
