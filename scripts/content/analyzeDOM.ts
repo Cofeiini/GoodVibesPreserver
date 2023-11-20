@@ -1,11 +1,9 @@
 const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 import { urlFilter, githubResponse } from "../tools/interfaces";
-import { filterToken } from "../tools/token";
 import { messagingMap, message, Action } from "../tools/messaging";
 
 let blockedElementsSet : Set<{blockedElement : Element, recoverID : number, url : string}> = new Set();
 let blockedElementsCounter : number = 0;
-let blockedUrls : Set<string> = new Set();
 
 // Messaging system
 
@@ -97,7 +95,6 @@ const analyzeDOM = () : void => {
     const srcElements : NodeListOf<Element> = document.querySelectorAll('[src]');
     let elementSet : Set<{element : Element, url : string | null}> = new Set();
     const activeRegEx : RegExp = new RegExp(`${window.location.hostname}`);
-    console.log(activeRegEx);
 
     hrefElements.forEach(element =>{
         elementSet.add({
@@ -117,21 +114,9 @@ const analyzeDOM = () : void => {
         elementSet.forEach(DOMElement => {
             if(DOMElement.url)
             {
-                if(blockedUrls.has(DOMElement.url) && !DOMElement.element.hasAttribute('blocked-identifier'))
-                {
-                    console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
-                    blockedElementsCounter++;
-                    DOMElement.element.setAttribute('blocked-identifier','blocked');                      
-                    const warningSign : DocumentFragment = document.createRange().createContextualFragment(makeWarning(DOMElement.element));
-                    DOMElement.element.parentNode?.replaceChild(warningSign,DOMElement.element);
-                    document.getElementById(`recover-button-${blockedElementsCounter}`)?.addEventListener('click',recoverElement);
-                    console.log("Blocked content.")
-                    return;
-                }
-
                 if(filterRegExp.test(DOMElement.url) && !activeRegEx.test(DOMElement.url) && !DOMElement.element.hasAttribute('blocked-identifier'))
                 {
-                    blockedUrls.add(DOMElement.url);
+                    console.log(`Blocked test: ${DOMElement.url.split('/').at(2)}`);
                     console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
                     blockedElementsCounter++;
                     DOMElement.element.setAttribute('blocked-identifier','blocked');                    
@@ -147,8 +132,8 @@ const analyzeDOM = () : void => {
 
 const recoverElement = (event: Event) : void =>{
     console.log("Recover element called");
-    const recoverButtonHTML : HTMLElement = event.target as HTMLElement;
-    const regexID : RegExpExecArray | null = /recover-button-(\d+)/.exec(recoverButtonHTML.getAttribute("id") || "");
+    const recoverButtonElement : HTMLElement = event.target as HTMLElement;
+    const regexID : RegExpExecArray | null = /recover-button-(\d+)/.exec(recoverButtonElement.getAttribute("id") || "");
     const recoverID : number = Number(regexID?.at(1));
     const blockedContainer : HTMLElement | null = document.getElementById(`blocked-container-${recoverID}`);
     blockedElementsSet.forEach(elem =>{
@@ -157,8 +142,8 @@ const recoverElement = (event: Event) : void =>{
             if(blockedContainer)
             {
                 console.log(elem.blockedElement);
-                var recover : boolean = window.confirm(`Do you want to recover this element? \n The source of the element comes from a blocked URL: ${elem.url}`);
-                if(recover)
+                var recoverPrompt : boolean = window.confirm(`Do you want to recover this element? \n The source of the element comes from a blocked URL: ${elem.url}`);
+                if(recoverPrompt)
                 {
                     blockedContainer.parentNode?.replaceChild(elem.blockedElement,blockedContainer);   
                 }
@@ -168,12 +153,17 @@ const recoverElement = (event: Event) : void =>{
     })
 }
 
+// Mutation observer setup.
+
 const mutationObserver = new MutationObserver(analyzeDOM);
 
 const observerConfig = { childList: true, subtree: true, attributes: true, characterData: true};
 
 mutationObserver.observe(document,observerConfig);
 
+
+
+// Fetchs filters as soon as the website finishes loading.
 
 if(document.readyState !== "loading")
 {
