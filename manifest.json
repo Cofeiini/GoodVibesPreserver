@@ -22,7 +22,8 @@
     "webRequestBlocking",
     "activeTab",
     "windows",
-    "storage"
+    "storage",
+    "file://*/*"
   ],
 
   "background": {
