@@ -6,7 +6,11 @@ import { urlFilter, githubResponse, filterResults } from "../tools/interfaces";
 import { Optional } from "../tools/optional";
 import { messagingMap, message, Action } from "../tools/messaging";
 const filtersUrl : string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
-
+const HTMLResourcesUrls : string[] = [
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedsite.html?ref=main",
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelement.html?ref=main",
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main"
+]
 
 // Session whitelist 
 
@@ -37,18 +41,35 @@ const updateWhitelist = (url : string) : void =>{
 
 //Local storage setup
 
+const getHTMLResources = async () : Promise<string[]> =>{
+    var fetchedResources : string[] = [];
+    HTMLResourcesUrls.forEach(resourceUrl =>{
+        fetch(resourceUrl, { 
+            headers: {  
+                Authorization: `${filterToken}`  
+            } 
+        })
+        .then(response => response.json())
+        .then(responseJSON =>{
+            const resourceString = atob(responseJSON.content);
+            fetchedResources.push(resourceString);
+        })
+    })
+    return Promise.resolve(fetchedResources);
+}
+
 browser.runtime.onInstalled.addListener(() =>{
-    browser.storage.local.set({
-        whitelist: [],
-        blockedAmount: 0,
-    })
-    .then(() =>{
-        console.log("Local storage created successfully.");
-        return;
-    })
-    .catch(() =>{
-        console.log("Failed to create local storage.");
-        return;
+    getHTMLResources()
+    .then((fetchedHTMLResources : string[]) =>{
+        console.log(fetchedHTMLResources);
+        console.log(fetchedHTMLResources.length);
+        browser.storage.local.set({
+            whitelist: [],
+            blockedAmount: 0,
+            blockedSiteHTML: fetchedHTMLResources[0],
+            blockedElementHTML: fetchedHTMLResources[1],
+            blockedElementSmallHTML: fetchedHTMLResources[2],
+        })
     })
 })
 
@@ -253,6 +274,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                         }
                         browser.runtime.sendMessage(redirectMessage)
                     })`}); // This script needs to be injected due the browser engine sometimes executing the content script too late and a message to the content script will never be received.
+                    
                     filter.write(encoder.encode(
                     `
                         <html>

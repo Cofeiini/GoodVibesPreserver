@@ -45,7 +45,7 @@ const makeWarning = (blockedElement : Element) : string => {
     
     if(analyzeElement(blockedElement))
     {
-        return`
+        return `
             <div id="blocked-container-${blockedElementsCounter}" style="padding: 2px; background-color: rgb(31,31,31); border-radius: 20px; width: ${(blockedElement as HTMLElement).offsetWidth}px; height: ${(blockedElement as HTMLElement).offsetHeight}px; display: flex; align-items: center; justify-content:center">
             <button id="recover-button-${blockedElementsCounter}" style="font-family: Arial, Helvetica, sans-serif; font-weight: bold">
             Recover
@@ -55,7 +55,7 @@ const makeWarning = (blockedElement : Element) : string => {
     }
     else
     {
-        return`
+        return `
         <div  
         id="blocked-container-${blockedElementsCounter}"
         style="
