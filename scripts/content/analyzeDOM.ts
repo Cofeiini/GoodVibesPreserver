@@ -1,13 +1,20 @@
 import { urlFilter, githubResponse } from "../tools/interfaces";
 import { messagingMap, message, Action } from "../tools/messaging";
+import { Optional } from "../tools/optional";
 
 
 // Messaging system
 
-let filters : urlFilter[];
+var filters : urlFilter[];
+var blockedSignString : string;
+var blockedSignSmallString : string;
 
 const setupFilters = (message : message) =>{
-    filters = message.data.content;
+    filters = message.data.content.filters;
+    blockedSignString = message.data.content.blockedSign;
+    blockedSignSmallString = message.data.content.blockedSignSmall;
+    console.log(blockedSignSmallString);
+    console.log(blockedSignString);
 }
 
 const fetchFilters = () => {
@@ -42,55 +49,22 @@ let blockedElementsCounter : number = 0;
  */
 
 const makeWarning = (blockedElement : Element) : string => { 
-    
-    if(analyzeElement(blockedElement))
+    const parser = new DOMParser();
+    const serializer = new XMLSerializer();
+    const elementHeight = (blockedElement as HTMLElement).offsetHeight;
+    const elementWidth = (blockedElement as HTMLElement).offsetWidth;
+    const measuredWarningSize : string = analyzeElement(blockedElement); // analyzeElement returns the proper HTML string depending the parameter element dimensions.
+    const newWarningHTML : Document = parser.parseFromString(measuredWarningSize,'text/html');
+    const blockedContainer = new Optional<HTMLElement>(newWarningHTML.getElementById("blocked-container-?"));
+    const revealButton = new Optional<HTMLElement>(newWarningHTML.getElementById("recover-button-?"));
+    if(measuredWarningSize === blockedSignSmallString)
     {
-        return `
-            <div id="blocked-container-${blockedElementsCounter}" style="padding: 2px; background-color: rgb(31,31,31); border-radius: 20px; width: ${(blockedElement as HTMLElement).offsetWidth}px; height: ${(blockedElement as HTMLElement).offsetHeight}px; display: flex; align-items: center; justify-content:center">
-            <button id="recover-button-${blockedElementsCounter}" style="font-family: Arial, Helvetica, sans-serif; font-weight: bold">
-            Recover
-            </button>
-            </div>
-        `
+        blockedContainer.value().style.width = elementWidth.toString();
+        blockedContainer.value().style.height = elementHeight.toString();
     }
-    else
-    {
-        return `
-        <div  
-        id="blocked-container-${blockedElementsCounter}"
-        style="
-        padding: 5px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        font-size: medium;
-        width: 180px;
-        gap: 6px;
-        background: rgb(95, 31, 31);
-        color: white;
-        border-radius: 5px;
-        border-style: solid;
-        border-width: 1.5px;
-        border-color: white;>
-            <label style="        
-            font-family: Arial, Helvetica, sans-serif;
-            font-weight: bold;">
-            ⚠️ Blocked content ⚠️</label> 
-
-            <button id="recover-button-${blockedElementsCounter}" style="        
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 75%;
-            color: black;
-            cursor: pointer;
-            border: none;
-            border-radius: 4px;
-            padding: 5px;
-            box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.411);"
-            >Reveal content</button>
-        </div>
-    `
-    }
-    
+    blockedContainer.value().id = `blocked-container-${blockedElementsCounter}`;
+    revealButton.value().id = `recover-button-${blockedElementsCounter}`;
+    return serializer.serializeToString(newWarningHTML);
 }
 
 
@@ -101,10 +75,10 @@ const makeWarning = (blockedElement : Element) : string => {
  * @returns { boolean } for telling whether the warning sign should be the default or smaller one.
  * 
  */
-const analyzeElement = (element: Element) : boolean =>{
+const analyzeElement = (element: Element) : string =>{
     const elementHTML : HTMLElement = (element as HTMLElement);
-    if(elementHTML.offsetWidth <= 134 || elementHTML.offsetHeight <= 52) { return true } // 134 pixels of width and 52 pixels of height is the minimum dimensions for the warning sign to look correctly.
-    return false;
+    if(elementHTML.offsetWidth <= 134 || elementHTML.offsetHeight <= 52) { return blockedSignSmallString } // 134 pixels of width and 52 pixels of height is the minimum dimensions for the warning sign to look correctly.
+    return blockedSignString;
 }
 
 const analyzeDOM = () : void => {
