@@ -121,7 +121,21 @@ const sendFilters = (message : message, sender : browser.runtime.MessageSender) 
     getDataRequest.onsuccess = (event: Event) => {
         const data : urlFilter[] = (event.target as IDBRequest).result;
         console.log("Asked for filters.")
-        browser.tabs.sendMessage(senderId,{ action: Action.send_filters, data: {content: data } })
+        browser.storage.local.get()
+        .then((result) =>{
+            const blockedSign : string = result["blockedElementHTML"];
+            const blockedSignSmall : string = result["blockedElementSmallHTML"];
+            browser.tabs.sendMessage(senderId,{ 
+                action: Action.send_filters, 
+                data: {
+                    content: {  
+                        filters: data, 
+                        blockedSign: blockedSign, 
+                        blockedSignSmall: blockedSignSmall 
+                    }   
+                } 
+            })
+        })
     }
 }   
 
@@ -257,7 +271,6 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
     }
 
     filter.onstop = () => {
-        let blockedSiteString : String;
         isBlockedUrl(url.hostname, url)
             .then((filteredURL: filterResults) => {
                 console.log(filteredURL); //debug
@@ -288,16 +301,9 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                     tagsSpan.value().textContent = filteredURL.tags.join(', ')
 
                     let decodedHTML : string = serializer.serializeToString(blockedSiteDOM);
-                    console.log(decodedHTML);
-                    try{
-                        filter.write(encoder.encode(decodedHTML)); 
-                    }
-                    catch(err)
-                    {
-                        console.error(`Error while writing in filter: ${err}`);
-                    }
-
-
+                    
+                    filter.write(encoder.encode(decodedHTML)); 
+                    
                 } else {
                     filter.write(buffer);
                 }
