@@ -43,26 +43,22 @@ const updateWhitelist = (url : string) : void =>{
 
 const getHTMLResources = async () : Promise<string[]> =>{
     var fetchedResources : string[] = [];
-    HTMLResourcesUrls.forEach(resourceUrl =>{
-        fetch(resourceUrl, { 
+    for(const resourceUrl of HTMLResourcesUrls)
+    {
+        const response = await fetch(resourceUrl, { 
             headers: {  
                 Authorization: `${filterToken}`  
             } 
-        })
-        .then(response => response.json())
-        .then(responseJSON =>{
-            const resourceString = atob(responseJSON.content);
-            fetchedResources.push(resourceString);
-        })
-    })
+        });
+        const responseJSON : githubResponse = await response.json()
+        fetchedResources.push(atob(responseJSON.content))
+    }
     return Promise.resolve(fetchedResources);
 }
 
 browser.runtime.onInstalled.addListener(() =>{
     getHTMLResources()
     .then((fetchedHTMLResources : string[]) =>{
-        console.log(fetchedHTMLResources);
-        console.log(fetchedHTMLResources.length);
         browser.storage.local.set({
             whitelist: [],
             blockedAmount: 0,
@@ -166,7 +162,11 @@ const messageMap = new messagingMap([
  * 
  */
 
+var blockedSiteHTMLString : string;
+
 const isBlockedUrl = async (hostname: string, url: URL) : Promise<filterResults> => {
+    let { blockedSiteHTML } = await browser.storage.local.get("blockedSiteHTML");
+    blockedSiteHTMLString = blockedSiteHTML;
     let isLocallyWhitelisted, isTemporarilyWhitelisted  = false;
     const sessionWhitelistString = window.sessionStorage.getItem("whitelist");
     let sessionWhitelist : string[] = [];
@@ -253,9 +253,11 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
         temp.set(buffer);
         temp.set(new Uint8Array(event.data), buffer.byteLength);
         buffer = temp;
+        console.log(`On data buffer; ${buffer}`);
     }
 
     filter.onstop = () => {
+        let blockedSiteString : String;
         isBlockedUrl(url.hostname, url)
             .then((filteredURL: filterResults) => {
                 console.log(filteredURL); //debug
@@ -275,77 +277,27 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
                         browser.runtime.sendMessage(redirectMessage)
                     })`}); // This script needs to be injected due the browser engine sometimes executing the content script too late and a message to the content script will never be received.
                     
-                    filter.write(encoder.encode(
-                    `
-                        <html>
-                            <body>
-                                <div class="main-container">
-                                    <div class="website-warning">
-                                        <h1>The site: <span class="url">${filteredURL.sitename}</span> has been blocked</h1>
-                                        <label>It is considered a site that contains: <span class="tags">${filteredURL.tags}</span>. Visiting this site could risk your device or show unpleasant content.<br>
-                                        We recommend to avoid this site, if you are sure you can proceed under your own risk, please proceed with caution.</label>
-                                    </div>
-                                    <div class="proceed-section">
-                                        <button id="proceedanyways">Proceed Anyways</button>
-                                    </div>
-                                </div>
-                            </body>
-                        </html>
-                        <style>
-                        h1, h2, label
-                        {
-                            color: white;
-                        }
-                        body{
-                            background-color: rgb(63, 0, 0);
-                            display: flex;
-                            justify-content: center;
-                        }
-                        *
-                        {
-                            font-family:Arial, Helvetica, sans-serif;
-                        }
-                        .main-container
-                        {
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            gap: 10px;
-                            background-color: rgb(29, 29, 29);
-                            box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.377);
-                            border-radius: 5px;
-                            width: fit-content;
-                        }
-                        .website-warning
-                        {
-                            padding: 20px;
-                            border-radius: 5px;
-                        }
-                        .proceed-section
-                        {
-                            display: flex;
-                            padding: 20px;
-                            border-radius: 5px;
-                        }
-                        #proceedanyways
-                        {
-                            border: none;
-                            color: white;
-                            background-color: rgba(0,0,0,0);
-                            text-decoration: underline;
-                            cursor: pointer;
-                        }
-                        #proceedanyways:hover
-                        {
-                            color: grey;
-                        }
-                        .url, .tags
-                        {
-                            color: crimson;
-                        }
-                    </style>
-                    `
-                    ));
+                    const parser = new DOMParser();
+                    const serializer = new XMLSerializer();
+                    const blockedSiteDOM : Document = parser.parseFromString(blockedSiteHTMLString,'text/html');
+
+                    const urlSpan = new Optional<HTMLElement>(blockedSiteDOM.getElementById("blockedUrl"));
+                    const tagsSpan = new Optional<HTMLElement>(blockedSiteDOM.getElementById("blockedUrlTags"));
+
+                    urlSpan.value().textContent = filteredURL.sitename;
+                    tagsSpan.value().textContent = filteredURL.tags.join(', ')
+
+                    let decodedHTML : string = serializer.serializeToString(blockedSiteDOM);
+                    console.log(decodedHTML);
+                    try{
+                        filter.write(encoder.encode(decodedHTML)); 
+                    }
+                    catch(err)
+                    {
+                        console.error(`Error while writing in filter: ${err}`);
+                    }
+
+
                 } else {
                     filter.write(buffer);
                 }
