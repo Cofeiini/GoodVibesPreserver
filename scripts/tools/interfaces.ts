@@ -9,7 +9,7 @@ export interface filterResults
 {
     url: URL,
     sitename: string,
-    tags : string | string[],
+    tags : string[],
     blocked: boolean,
 }
 
