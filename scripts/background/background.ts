@@ -267,7 +267,7 @@ const handleRequest = (details: _OnBeforeRequestDetails) : BlockingResponse | Pr
         temp.set(buffer);
         temp.set(new Uint8Array(event.data), buffer.byteLength);
         buffer = temp;
-        console.log(`On data buffer; ${buffer}`);
+        // Careful with debugging stuff here, this gets called an absurd amount of times when making a navigation request.
     }
 
     filter.onstop = () => {

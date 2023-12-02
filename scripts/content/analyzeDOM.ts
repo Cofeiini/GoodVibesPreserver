@@ -13,8 +13,7 @@ const setupFilters = (message : message) =>{
     filters = message.data.content.filters;
     blockedSignString = message.data.content.blockedSign;
     blockedSignSmallString = message.data.content.blockedSignSmall;
-    console.log(blockedSignSmallString);
-    console.log(blockedSignString);
+    analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 }
 
 const fetchFilters = () => {
@@ -38,7 +37,10 @@ const messageMap = new messagingMap([
 // Element filtering
 
 let blockedElementsSet : Set<{blockedElement : Element, recoverID : number, url : string}> = new Set();
-let blockedElementsCounter : number = 0; 
+let blockedImagesSet : Set<{blockedSource: string, recoverID: number}> = new Set();
+let skippedSources : Set<string> = new Set();
+let blockedImagesCounter = 0;
+let blockedElementsCounter = 0; 
 
 /**
  * 
@@ -81,9 +83,90 @@ const analyzeElement = (element: Element) : string =>{
     return blockedSignString;
 }
 
+const recoverImage = (event: Event) : void =>{
+    event.preventDefault();
+    const revealPrompt = window.confirm("Do you want to reveal this image? \nIt could contain unpleasant content.");
+    if(revealPrompt)
+    {
+        const recoverID = Number((event.target as HTMLElement).getAttribute('src-identifier'));
+        console.log(`Recover ID: ${recoverID}`);
+        blockedImagesSet.forEach(element =>{
+            if(element.recoverID == recoverID)
+            {
+                (event.target as HTMLImageElement).src = element.blockedSource;
+                skippedSources.add(element.blockedSource);
+                event.target?.removeEventListener('click',recoverImage);
+            }
+        })
+    }
+}
+
+/**
+ * 
+ * @param width Width in pixels of the image that is getting filtered.
+ * 
+ * @param height Height in pixels of the image that is getting filtered.
+ * 
+ * @returns { String } Canvas element that will cover the filtered image.
+ * 
+ */
+const generateFilteredImage = (width: number, height: number) : string =>{
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const canvasContext = canvas.getContext('2d');
+    if(canvasContext)
+    {
+        const gradient = canvasContext.createLinearGradient(0,0,width,height);
+        gradient.addColorStop(0,'rgb(10,10,10)');
+        gradient.addColorStop(1,'rgb(55,55,55)');
+        canvasContext.fillStyle = gradient;
+        canvasContext.fillRect(0,0,width,height);
+    }
+
+    return canvas.toDataURL('image/png');
+}
+
+const filterImage = (image : HTMLImageElement) : void =>{
+    if(!image.getAttribute('src-identifier'))
+    {
+        const imageWidth = image.naturalWidth;
+        const imageHeight = image.naturalHeight;
+        const filteredImage = generateFilteredImage(imageWidth,imageHeight);
+        if((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src))
+        {
+            blockedImagesCounter++;
+            blockedImagesSet.add({blockedSource: image.src, recoverID: blockedImagesCounter});
+            image.setAttribute('src-identifier',`${blockedImagesCounter}`);
+            image.src = filteredImage;
+            image.addEventListener('click', recoverImage)
+        }
+    }
+}
+
+const analyzeImages = (images : NodeListOf<Element>) : void =>{
+    console.log("Analyze Images Called");
+    images.forEach(image =>{
+        const imageElement = (image as HTMLImageElement)
+        if(imageElement.complete)
+        {
+            filterImage(imageElement);
+            return;
+        }
+
+        image.addEventListener('load', () =>{
+            filterImage(imageElement);
+        })
+    })
+}
+
+
 const analyzeDOM = () : void => {
     const hrefElements : NodeListOf<Element> = document.querySelectorAll('[href]');
     const srcElements : NodeListOf<Element> = document.querySelectorAll('[src]');
+    const imgElements : NodeListOf<Element> = document.querySelectorAll('img');
+    analyzeImages(imgElements);
     let elementSet : Set<{element : Element, url : string | null}> = new Set();
     const activeRegEx : RegExp = new RegExp(`${window.location.hostname}`);
 
@@ -164,4 +247,6 @@ mutationObserver.observe(document,observerConfig);
 if(document.readyState !== "loading"){
     fetchFilters();
 }
-else {   document.addEventListener("DOMContentLoaded",fetchFilters);    }
+else {   
+    document.addEventListener("DOMContentLoaded", fetchFilters);    
+}
