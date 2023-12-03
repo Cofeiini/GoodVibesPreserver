@@ -164,6 +164,24 @@ const messageMap = new messagingMap([
 //
 
 
+// Report system
+
+    browser.contextMenus.create({
+        id: "gvp-report-image",
+        title: "Report Image",
+        contexts: ["image"],
+    });
+
+    browser.contextMenus.onClicked.addListener((info,tab) =>{
+        if(info.menuItemId === "gvp-report-image")
+        {
+            const reportedImage = info.srcUrl;
+            console.log(reportedImage);
+        }
+    })
+//
+
+
 // URL blocking
 
 /**
