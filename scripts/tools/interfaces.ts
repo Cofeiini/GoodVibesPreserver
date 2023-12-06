@@ -1,15 +1,14 @@
 export interface urlFilter
 {
     pattern: RegExp,
-    tags:string[],
+    tags: string[],
 }
-
 
 export interface filterResults
 {
     url: URL,
     sitename: string,
-    tags : string[],
+    tags: string[],
     blocked: boolean,
 }
 
@@ -29,9 +28,4 @@ export interface githubResponse {
         "html": string,
         "self": string
     }
-}
-
-const getHostname = (URL : string) : string | undefined =>{
-    const hostname : string | undefined = /http(s)?:\/\/?(\w+\.\w{2,})/.exec(URL)?.[3];
-    if(hostname) return hostname;
 }

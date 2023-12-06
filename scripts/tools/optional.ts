@@ -34,16 +34,16 @@ export class Optional<T> {
         }
 
         this.data = other;
-    }
+    };
 
     /**
      * Tests if the contained value is valid.
      *
      * @returns A boolean representing the validity of the value
      */
-    has_value = (): Boolean => {
+    has_value = (): boolean => {
         return (this.data !== null && this.data !== undefined);
-    }
+    };
 
     /**
      * Returns the contained value.
@@ -59,7 +59,7 @@ export class Optional<T> {
         }
 
         throw new Error("Bad Optional access");
-    }
+    };
 
     /**
      * Returns the contained value or the given default.
@@ -73,7 +73,7 @@ export class Optional<T> {
         }
 
         return default_value;
-    }
+    };
 
     /**
      * Returns the contained value after casting it to the given type.
@@ -89,7 +89,7 @@ export class Optional<T> {
         }
 
         throw new Error("Bad Optional cast and access");
-    }
+    };
 
     /**
      * Swaps the contained value with `other`.
@@ -100,12 +100,12 @@ export class Optional<T> {
         const temp = this.data;
         this.data = other.data;
         other.data = temp;
-    }
+    };
 
     /**
      * If the object contains a value, destroy that value. Otherwise, there are no effects.
      */
     reset = () => {
         this.data = null;
-    }
+    };
 }
