@@ -1,0 +1,78 @@
+.gvp-tag
+{
+    color: white;
+}
+
+#gvp-submit-button
+{
+    padding: 10px;
+    border-radius: 35px;
+    border: none;
+    box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.301);
+    cursor: pointer;
+}
+
+#gvp-close-report
+{
+    position: fixed;
+    right: 10px;
+    top: 10px;
+    border-radius: 20px;
+    font-weight: bold;
+    border: solid black 1px;
+    width: 20px;
+    height: 20px;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    border: solid white 1px;
+    cursor: pointer;
+}
+.gvp-report-title
+{
+    font-family: Arial, Helvetica, sans-serif;
+}
+.gvp-tags-title
+{
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+}
+.gvp-report-tags
+{
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    border-radius: 10px;
+    padding: 20px;
+}    
+.gvp-tags-section
+{
+    font-family: Arial, Helvetica, sans-serif;
+    display: grid;
+    grid-template-columns: repeat(2,50%);
+    padding: 20px;
+    align-items: center;
+    height: 100px;
+    gap: 10px;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    background-color: rgb(180, 180, 180);
+    border-radius: 5px;
+    box-shadow: inset 0 0 1px 1px black
+}
+.gvp-alert-style
+{
+    position: fixed;
+    top: 20%;
+    width: 450px;
+    height: 340px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(196, 196, 196, 0.712);
+    display: flex;
+    border-radius: 5px;
+    box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.452);
+    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+}
