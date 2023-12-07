@@ -15,6 +15,8 @@ const HTMLResourcesUrls: string[] = [
     "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main",
     "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.html?ref=main",
     "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.css?ref=main",
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
 ];
 
 // Session whitelist
@@ -67,6 +69,8 @@ browser.runtime.onInstalled.addListener(() => {
                 blockedElementSmallHTML: fetchedHTMLResources[2],
                 gvpreportHTML: fetchedHTMLResources[3],
                 gvpreportCSS: fetchedHTMLResources[4],
+                gvpnotificationHTML: fetchedHTMLResources[5],
+                gvpnotificationCSS: fetchedHTMLResources[6],
                 userBlockedImages: [] as string[],
                 userID: uuidv4(),
             });
@@ -127,6 +131,8 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
             .then((result) => {
                 const blockedSign: string = result["blockedElementHTML"];
                 const blockedSignSmall: string = result["blockedElementSmallHTML"];
+                const notificationHTMLString: string = result["gvpnotificationHTML"];
+                const notificationCSSString: string = result["gvpnotificationCSS"];
                 browser.tabs.sendMessage(senderId, {
                     action: Action.send_filters,
                     data: {
@@ -134,6 +140,8 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
                             filters: data,
                             blockedSign: blockedSign,
                             blockedSignSmall: blockedSignSmall,
+                            notificationCSSString: notificationCSSString,
+                            notificationHTMLString: notificationHTMLString,
                         },
                     },
                 });
@@ -187,10 +195,6 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                     const tabId = tab!.id!;
                     const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
                     const blockedImagesArray: string[] = result.userBlockedImages;
-                    if (blockedImagesArray.includes(reportedSrc)){
-                        browser.tabs.executeScript(tabId, { code: "window.alert('You have already reported this image')" });
-                        return;
-                    }
                     browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
                         content: {
                             userBlockedImages: result.userBlockedImages,

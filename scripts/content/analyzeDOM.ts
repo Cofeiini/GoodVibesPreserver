@@ -6,6 +6,8 @@ import { Optional } from "../tools/optional";
 let filters: urlFilter[];
 let blockedSignString: string;
 let blockedSignSmallString: string;
+let notificationHTMLString: string;
+let notificationStyleString: string;
 let userBlockedImages: string[];
 
 // Element filtering
@@ -198,6 +200,8 @@ const setupFilters = (message: browserMessage) => {
     filters = message.data.content.filters;
     blockedSignString = message.data.content.blockedSign;
     blockedSignSmallString = message.data.content.blockedSignSmall;
+    notificationHTMLString = message.data.content.notificationHTMLString;
+    notificationStyleString = message.data.content.notificationCSSString;
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };
 
@@ -205,6 +209,28 @@ const fetchFilters = () => {
     console.log("Fetch filters called.");
     browser.runtime.sendMessage({ action: Action.get_filters, data: {} });
 };
+
+//
+
+// GVP notification
+
+const makeNotification = (notificationText: string): void => {
+    document.getElementById("gvp-notification")?.remove();
+    const notificationDiv: HTMLDivElement = document.createElement("div");
+    const notificationStyle: HTMLStyleElement = document.createElement("style");
+    notificationDiv.innerHTML = notificationHTMLString;
+    notificationStyle.innerHTML = notificationStyleString;
+    document.head.appendChild(notificationStyle);
+    document.body.appendChild(notificationDiv);
+    document.getElementById("gvp-notification-text")!.innerText = notificationText;
+    document.getElementById("gvp-close-notification")?.addEventListener("click", () => {
+        document.getElementById("gvp-notification")?.remove();
+    });
+};
+
+//
+
+// Report system
 
 const tagsId: string[] = [
     "gvp-harassment-checkbox",
@@ -233,8 +259,13 @@ const makeReport = function(reportData: reportObject, locallyBlockedImages: stri
             selectedTags.push(tag.split("-").at(1)!);
         }
     });
+
+    if (!selectedTags.length){
+
+    }
+
     reportData.tags = selectedTags;
-    fetch("server_url", {
+    fetch("http://localhost:7070/report", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -250,13 +281,20 @@ const makeReport = function(reportData: reportObject, locallyBlockedImages: stri
 
 const reportImage = (message: browserMessage): void => {
     const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${message.data.content.base64src}"]`);
-    if (reportedImage?.getAttribute("src-identifier") || document.getElementById("gvp-alert")){
+    if (reportedImage?.getAttribute("src-identifier")){
+        makeNotification("This image has been reported already.");
         return;
     }
+
+    if (document.getElementById("gvp-alert")){
+        makeNotification("Cannot make multiple reports at the same time.");
+        return;
+    }
+
     const locallyBlockedImages: string[] = message.data.content.locallyBlockedImages;
     userBlockedImages = message.data.content.userBlockedImages;
-    const reportDiv = document.createElement("div");
-    const reportStyle = document.createElement("style");
+    const reportDiv: HTMLDivElement = document.createElement("div");
+    const reportStyle: HTMLStyleElement = document.createElement("style");
     reportStyle.innerHTML = message.data.content.reportCSS;
     reportDiv.innerHTML = message.data.content.reportHTML;
     document.head.appendChild(reportStyle);
@@ -266,12 +304,29 @@ const reportImage = (message: browserMessage): void => {
         userID: message.data.content.userID,
         tags: [],
     };
+    let checkboxCounter: number = 0;
+    (document.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = true;
+    const tagCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-checkbox");
+    tagCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener("change", (event) => {
+            const checkBoxValue = ((event.target as HTMLInputElement).checked ? 1 : -1);
+            checkboxCounter += checkBoxValue;
+            (document.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = checkboxCounter < 1;
+        });
+    });
+    document.getElementById("gvp-close-report")?.addEventListener("click", () => {
+        document.getElementById("gvp-alert")?.remove();
+    });
     document.getElementById("gvp-submit-button")?.addEventListener("click", () => {
         makeReport(reportData, locallyBlockedImages);
     });
     console.log(`User Blocked Images: ${userBlockedImages}`);
     analyzeDOM(); // Call analyzeDOM() to block the image that has been reported.
 };
+
+//
+
+// Messaging setup
 
 const messageMap = new messagingMap([
     [Action.send_filters, setupFilters],
