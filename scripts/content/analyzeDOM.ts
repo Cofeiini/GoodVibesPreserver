@@ -9,6 +9,19 @@ let blockedSignSmallString: string;
 let notificationHTMLString: string;
 let notificationStyleString: string;
 let userBlockedImages: string[];
+let maxZIndex: number = 0;
+
+const getMaxZIndex = (): void => {
+    document.querySelectorAll("body div, body img, body nav, body section").forEach(element =>{
+        const computedStyle: CSSStyleDeclaration = getComputedStyle(element);
+        if (computedStyle.position !== "static"){
+            let zIndex: number = parseInt(computedStyle.zIndex) || 1;
+            maxZIndex = Math.max(zIndex,maxZIndex);
+        }
+    })
+    maxZIndex++;
+    return;
+}
 
 // Element filtering
 
@@ -208,6 +221,7 @@ const setupFilters = (message: browserMessage) => {
 const fetchFilters = () => {
     console.log("Fetch filters called.");
     browser.runtime.sendMessage({ action: Action.get_filters, data: {} });
+    getMaxZIndex();
 };
 
 //
@@ -222,6 +236,7 @@ const makeNotification = (notificationText: string): void => {
     notificationStyle.innerHTML = notificationStyleString;
     document.head.appendChild(notificationStyle);
     document.body.appendChild(notificationDiv);
+    document.getElementById("gvp-notification")!.style.zIndex = maxZIndex.toString();
     document.getElementById("gvp-notification-text")!.innerText = notificationText;
     document.getElementById("gvp-close-notification")?.addEventListener("click", () => {
         document.getElementById("gvp-notification")?.remove();
@@ -299,6 +314,7 @@ const reportImage = (message: browserMessage): void => {
     reportDiv.innerHTML = message.data.content.reportHTML;
     document.head.appendChild(reportStyle);
     document.body.appendChild(reportDiv);
+    document.getElementById("gvp-alert")!.style.zIndex = maxZIndex.toString();
     const reportData: reportObject = {
         src: message.data.content.src,
         userID: message.data.content.userID,
