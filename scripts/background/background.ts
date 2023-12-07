@@ -223,9 +223,8 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 let blockedSiteHTMLString: string;
 
 const isBlockedUrl = async (hostname: string, url: URL): Promise<filterResults> => {
-    const { blockedSiteHTML } = await browser.storage.local.get("blockedSiteHTML");
+    const { blockedSiteHTML } = await browser.storage.local.get();
     blockedSiteHTMLString = blockedSiteHTML;
-    let isLocallyWhitelisted = false;
     let isTemporarilyWhitelisted = false;
     const sessionWhitelistString = window.sessionStorage.getItem("whitelist");
     let sessionWhitelist: string[] = [];
@@ -233,20 +232,16 @@ const isBlockedUrl = async (hostname: string, url: URL): Promise<filterResults> 
         const sessionWhitelistObject: whitelist = JSON.parse(sessionWhitelistString);
         sessionWhitelist = sessionWhitelistObject.whitelist;
     }
-    const localWhitelistStorage = await browser.storage.local.get("whitelist");
-    const localWhitelist: string[] = localWhitelistStorage.whitelist;
-
     const matches: RegExpMatchArray | null = url.toString().match(/(?:www\.)?([\w\-.]+\.\w{2,})/);
     const address: string | undefined = matches?.[0];
     if (address) {
         console.log(address);
-        isLocallyWhitelisted = localWhitelist.includes(address);
         isTemporarilyWhitelisted = sessionWhitelist.includes(address);
     }
     console.log(`Session whitelist: ${sessionWhitelistString}`);
     console.log(`Temporarily whitelisted: ${isTemporarilyWhitelisted}`);
 
-    if (isLocallyWhitelisted || isTemporarilyWhitelisted){
+    if (isTemporarilyWhitelisted){
         return new Promise((resolve, _) => {
             resolve({
                 "sitename": hostname,
