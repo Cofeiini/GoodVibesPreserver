@@ -12,13 +12,9 @@ let userBlockedImages: string[];
 let maxZIndex: number = 0;
 
 const getMaxZIndex = (): void => {
-    document.querySelectorAll("body div, body img, body nav, body section").forEach(element =>{
-        const computedStyle: CSSStyleDeclaration = getComputedStyle(element);
-        if (computedStyle.position !== "static"){
-            let zIndex: number = parseInt(computedStyle.zIndex) || 1;
-            maxZIndex = Math.max(zIndex,maxZIndex);
-        }
-    })
+    maxZIndex = Math.max(...Array.from(document.querySelectorAll("body div, body img, body nav, body section"), (element) =>{
+      return parseInt(getComputedStyle(element).zIndex);
+    }).filter(zIndex => !Number.isNaN(zIndex)));
     maxZIndex++;
     return;
 }
@@ -262,6 +258,7 @@ type reportObject = {
     src: string,
     userID: string,
     tags: string[],
+    timeStamp: string,
 };
 
 const makeReport = function(reportData: reportObject, locallyBlockedImages: string[]) {
@@ -319,6 +316,7 @@ const reportImage = (message: browserMessage): void => {
         src: message.data.content.src,
         userID: message.data.content.userID,
         tags: [],
+        timeStamp: new Date().toISOString(),   
     };
     let checkboxCounter: number = 0;
     (document.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = true;
