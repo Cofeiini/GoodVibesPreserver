@@ -19,6 +19,13 @@ const HTMLResourcesUrls: string[] = [
     "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
 ];
 
+const contentScriptResourcesUrls: string[] = [
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelement.html?ref=main",
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main",
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
+    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
+]
+
 // Session whitelist
 
 type whitelist = {
@@ -44,9 +51,15 @@ const updateWhitelist = (url: string): void => {
 
 //Local storage setup
 
-const getHTMLResources = async (): Promise<string[]> => {
+
+/* blockedSign: blockedSign,
+blockedSignSmall: blockedSignSmall,
+notificationCSSString: notificationCSSString,
+notificationHTMLString: notificationHTMLString, */
+
+const fetchResources = async (resourcesUrls: string[]): Promise<string[]> => {
     const fetchedResources: string[] = [];
-    for (const resourceUrl of HTMLResourcesUrls){
+    for (const resourceUrl of resourcesUrls){
         const response = await fetch(resourceUrl, {
             headers: {
                 Authorization: `${filterToken}`,
@@ -59,8 +72,9 @@ const getHTMLResources = async (): Promise<string[]> => {
 };
 
 browser.runtime.onInstalled.addListener(() => {
-    getHTMLResources()
+    fetchResources(HTMLResourcesUrls)
         .then((fetchedHTMLResources: string[]) => {
+            console.log(fetchedHTMLResources);
             browser.storage.local.set({
                 whitelist: [] as string[],
                 blockedAmount: 0,
@@ -71,7 +85,7 @@ browser.runtime.onInstalled.addListener(() => {
                 gvpreportCSS: fetchedHTMLResources[4],
                 gvpnotificationHTML: fetchedHTMLResources[5],
                 gvpnotificationCSS: fetchedHTMLResources[6],
-                userBlockedImages: [] as string[],
+                reportedImages: [] as string[],
                 userID: uuidv4(),
             });
         });
@@ -129,19 +143,35 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
         console.log("Asked for filters.");
         browser.storage.local.get()
             .then((result) => {
-                const blockedSign: string = result["blockedElementHTML"];
-                const blockedSignSmall: string = result["blockedElementSmallHTML"];
-                const notificationHTMLString: string = result["gvpnotificationHTML"];
-                const notificationCSSString: string = result["gvpnotificationCSS"];
+                if (!result["gvpnotificationHTML"]){
+                    console.log("Resources are undefined");
+                    fetchResources(contentScriptResourcesUrls)
+                    .then(resources =>{
+                        console.log(resources);
+                        browser.tabs.sendMessage(senderId, {
+                            action: Action.send_filters,
+                            data: {
+                                content: {
+                                    filters: data,
+                                    blockedSign: resources[0],
+                                    blockedSignSmall: resources[1],
+                                    notificationCSSString: resources[2],
+                                    notificationHTMLString: resources[3],
+                                },
+                            },
+                        });
+                    })
+                    return;
+                }
                 browser.tabs.sendMessage(senderId, {
                     action: Action.send_filters,
                     data: {
                         content: {
                             filters: data,
-                            blockedSign: blockedSign,
-                            blockedSignSmall: blockedSignSmall,
-                            notificationCSSString: notificationCSSString,
-                            notificationHTMLString: notificationHTMLString,
+                            blockedSign: result["blockedElementHTML"],
+                            blockedSignSmall: result["blockedElementSmallHTML"],
+                            notificationCSSString: result["gvpnotificationCSS"],
+                            notificationHTMLString: result["gvpnotificationHTML"],
                         },
                     },
                 });
@@ -160,7 +190,7 @@ const redirectTab = (message: browserMessage, sender: browser.runtime.MessageSen
 };
 
 const updateBlockedImages = (message: browserMessage): void => {
-    browser.storage.local.set({ userBlockedImages: message.data.content.updatedBlockedImages });
+    browser.storage.local.set({ reportedImages: message.data.content.updatedBlockedImages });
 };
 
 const messageMap = new messagingMap([
@@ -194,15 +224,13 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                     const reportCSS: string = result.gvpreportCSS;
                     const tabId = tab!.id!;
                     const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
-                    const blockedImagesArray: string[] = result.userBlockedImages;
                     browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
                         content: {
-                            userBlockedImages: result.userBlockedImages,
+                            reportedImages: result.reportedImages,
                             src: reportedSrc,
                             userID: result.userID,
                             reportCSS: reportCSS,
                             reportHTML: reportHTML,
-                            locallyBlockedImages: blockedImagesArray,
                             base64src: info.srcUrl,
                         },
                     } });
