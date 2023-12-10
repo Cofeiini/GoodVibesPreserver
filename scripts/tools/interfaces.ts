@@ -29,3 +29,10 @@ export interface githubResponse {
         "self": string
     }
 }
+
+export type reportObject = {
+    src: string,
+    userID: string,
+    tags: string[],
+    timeStamp: string,
+};

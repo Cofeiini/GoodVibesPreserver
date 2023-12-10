@@ -2,13 +2,15 @@ import SparkMD5 from "spark-md5";
 import { urlFilter } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import { Optional } from "../tools/optional";
+import { reportObject } from "../tools/interfaces";
 
 let filters: urlFilter[];
 let blockedSignString: string;
 let blockedSignSmallString: string;
 let notificationHTMLString: string;
 let notificationStyleString: string;
-let userBlockedImages: string[];
+let reportedImages: string[] = [];
+let reportQueue: reportObject[] = [];
 let maxZIndex: number = 0;
 
 const getMaxZIndex = (): void => {
@@ -96,7 +98,7 @@ const generateFilteredImage = (width: number, height: number): string => {
         canvasContext.fillStyle = gradient;
         canvasContext.fillRect(0, 0, width, height);
     }
-
+    console.trace(canvas);
     return canvas.toDataURL("image/png");
 };
 
@@ -104,9 +106,9 @@ const filterImage = (image: HTMLImageElement): void => {
     if (!image.getAttribute("src-identifier")){
         const imageWidth = image.naturalWidth;
         const imageHeight = image.naturalHeight;
-        const filteredImage = generateFilteredImage(imageWidth, imageHeight);
         const imageSource: string = (/^data/.test(image.src) ? SparkMD5.hash(image.src) : image.src);
-        if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && userBlockedImages.includes(imageSource)){
+        if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && reportedImages.includes(imageSource)){
+            const filteredImage = generateFilteredImage(imageWidth, imageHeight);
             blockedImagesCounter++;
             blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter });
             image.setAttribute("src-identifier", `${blockedImagesCounter}`);
@@ -193,24 +195,16 @@ const analyzeDOM = (): void => {
 
 //
 
-// Mutation observer setup.
-
-const mutationObserver = new MutationObserver(analyzeDOM);
-
-const observerConfig = { childList: true, subtree: true, attributes: true, characterData: true };
-
-mutationObserver.observe(document, observerConfig);
-
-//
-
 // Messaging system
 
 const setupFilters = (message: browserMessage) => {
+    console.log(message);
     filters = message.data.content.filters;
     blockedSignString = message.data.content.blockedSign;
     blockedSignSmallString = message.data.content.blockedSignSmall;
     notificationHTMLString = message.data.content.notificationHTMLString;
     notificationStyleString = message.data.content.notificationCSSString;
+    reportedImages = message.data.content.reportedImages;
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };
 
@@ -224,8 +218,15 @@ const fetchFilters = () => {
 
 // GVP notification
 
+let notificationTimeout: NodeJS.Timeout | null = null;
+
 const makeNotification = (notificationText: string): void => {
+    console.log("Make notification called");
+    console.log(notificationHTMLString);
     document.getElementById("gvp-notification")?.remove();
+    if (notificationTimeout){
+        clearTimeout(notificationTimeout);
+    }
     const notificationDiv: HTMLDivElement = document.createElement("div");
     const notificationStyle: HTMLStyleElement = document.createElement("style");
     notificationDiv.innerHTML = notificationHTMLString;
@@ -237,6 +238,10 @@ const makeNotification = (notificationText: string): void => {
     document.getElementById("gvp-close-notification")?.addEventListener("click", () => {
         document.getElementById("gvp-notification")?.remove();
     });
+
+    notificationTimeout = setTimeout(() => {
+        document.getElementById("gvp-notification")?.remove();
+    }, 8000);
 };
 
 //
@@ -254,29 +259,7 @@ const tagsId: string[] = [
     "gvp-misinformation-checkbox",
 ];
 
-type reportObject = {
-    src: string,
-    userID: string,
-    tags: string[],
-    timeStamp: string,
-};
-
-const makeReport = function(reportData: reportObject, locallyBlockedImages: string[]) {
-    const selectedTags: string[] = [];
-    locallyBlockedImages.push(reportData.src);
-    browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: { updatedBlockedImages: locallyBlockedImages } } });
-    tagsId.forEach(tag => {
-        const checkbox: HTMLInputElement = document.getElementById(`${tag}`) as HTMLInputElement;
-        if (checkbox.checked){
-            selectedTags.push(tag.split("-").at(1)!);
-        }
-    });
-
-    if (!selectedTags.length){
-
-    }
-
-    reportData.tags = selectedTags;
+const sendReport = (reportData: reportObject): void => {
     fetch("http://localhost:7070/report", {
         method: "POST",
         headers: {
@@ -286,9 +269,36 @@ const makeReport = function(reportData: reportObject, locallyBlockedImages: stri
     })
         .then(response => {
             console.log(response.status);
-            const reportPopup = document.getElementById("gvp-alert");
-            reportPopup?.remove();
-        });
+            document.getElementById("gvp-alert")?.remove();
+            if(reportQueue.length){
+                const temp: reportObject = reportQueue[0]
+                reportQueue.shift();
+                browser.runtime.sendMessage({action: Action.update_report_queue, data: { content: { reportQueue: reportQueue  } } });
+                sendReport(temp);
+            }
+        })
+        .catch((response) => {
+            console.log(response.status);
+            makeNotification("Failed to communicate with the server.\nThe report has been added to the queue of failed reports.");
+            reportQueue.push(reportData);
+            browser.runtime.sendMessage({action: Action.update_report_queue, data: { content: { reportQueue: reportQueue  } } });
+            document.getElementById("gvp-alert")?.remove();
+        })
+}
+
+const makeReport = function(reportData: reportObject, userReportedImages: string[]) {
+    const selectedTags: string[] = [];
+    userReportedImages.push(reportData.src);
+    browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: { updatedBlockedImages: userReportedImages } } });
+    tagsId.forEach(tag => {
+        const checkbox: HTMLInputElement = document.getElementById(`${tag}`) as HTMLInputElement;
+        if (checkbox.checked){
+            selectedTags.push(tag.split("-").at(1)!);
+        }
+    });
+
+    reportData.tags = selectedTags;
+    sendReport(reportData);
 };
 
 const reportImage = (message: browserMessage): void => {
@@ -297,14 +307,12 @@ const reportImage = (message: browserMessage): void => {
         makeNotification("This image has been reported already.");
         return;
     }
-
     if (document.getElementById("gvp-alert")){
         makeNotification("Cannot make multiple reports at the same time.");
         return;
     }
-
-    const locallyBlockedImages: string[] = message.data.content.locallyBlockedImages;
-    userBlockedImages = message.data.content.userBlockedImages;
+    reportedImages = message.data.content.reportedImages;
+    reportQueue = message.data.content.reportQueue;
     const reportDiv: HTMLDivElement = document.createElement("div");
     const reportStyle: HTMLStyleElement = document.createElement("style");
     reportStyle.innerHTML = message.data.content.reportCSS;
@@ -332,9 +340,9 @@ const reportImage = (message: browserMessage): void => {
         document.getElementById("gvp-alert")?.remove();
     });
     document.getElementById("gvp-submit-button")?.addEventListener("click", () => {
-        makeReport(reportData, locallyBlockedImages);
+        makeReport(reportData, reportedImages);
     });
-    console.log(`User Blocked Images: ${userBlockedImages}`);
+    console.log(`User Blocked Images: ${reportedImages}`);
     analyzeDOM(); // Call analyzeDOM() to block the image that has been reported.
 };
 
@@ -362,3 +370,15 @@ if (document.readyState === "loading"){
 } else {
     fetchFilters();
 }
+
+// Mutation observer setup.
+
+const mutationObserver = new MutationObserver(() => {
+    analyzeDOM();
+});
+
+const observerConfig = { childList: true, subtree: true, attributes: true, characterData: true };
+
+mutationObserver.observe(document, observerConfig);
+
+//

@@ -7,6 +7,7 @@ import { Optional } from "../tools/optional";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { v4 as uuidv4 } from "uuid";
+import { reportObject } from "../tools/interfaces";
 
 const filtersUrl: string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 const HTMLResourcesUrls: string[] = [
@@ -19,7 +20,7 @@ const HTMLResourcesUrls: string[] = [
     "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
 ];
 
-const contentScriptResourcesUrls: string[] = [
+const fallbackResources: string[] = [
     "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelement.html?ref=main",
     "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main",
     "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
@@ -74,7 +75,6 @@ const fetchResources = async (resourcesUrls: string[]): Promise<string[]> => {
 browser.runtime.onInstalled.addListener(() => {
     fetchResources(HTMLResourcesUrls)
         .then((fetchedHTMLResources: string[]) => {
-            console.log(fetchedHTMLResources);
             browser.storage.local.set({
                 whitelist: [] as string[],
                 blockedAmount: 0,
@@ -86,6 +86,7 @@ browser.runtime.onInstalled.addListener(() => {
                 gvpnotificationHTML: fetchedHTMLResources[5],
                 gvpnotificationCSS: fetchedHTMLResources[6],
                 reportedImages: [] as string[],
+                reportQueue: [] as reportObject[],
                 userID: uuidv4(),
             });
         });
@@ -143,9 +144,9 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
         console.log("Asked for filters.");
         browser.storage.local.get()
             .then((result) => {
-                if (!result["gvpnotificationHTML"]){
+                if (!result["gvpnotificationHTML"]){ // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
                     console.log("Resources are undefined");
-                    fetchResources(contentScriptResourcesUrls)
+                    fetchResources(fallbackResources)
                     .then(resources =>{
                         console.log(resources);
                         browser.tabs.sendMessage(senderId, {
@@ -157,6 +158,7 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
                                     blockedSignSmall: resources[1],
                                     notificationCSSString: resources[2],
                                     notificationHTMLString: resources[3],
+                                    reportedImages: result["reportedImages"],
                                 },
                             },
                         });
@@ -172,11 +174,18 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
                             blockedSignSmall: result["blockedElementSmallHTML"],
                             notificationCSSString: result["gvpnotificationCSS"],
                             notificationHTMLString: result["gvpnotificationHTML"],
+                            reportedImages: result["reportedImages"],
                         },
                     },
                 });
             });
     };
+};
+
+const updateReportQueue = (message: browserMessage): void => {
+    const updatedReportQueue: reportObject[] = message.data.content.reportQueue;
+    console.log(`Report queue: ${updatedReportQueue}`);
+    browser.storage.local.set({ reportQueue: updatedReportQueue });
 };
 
 const redirectTab = (message: browserMessage, sender: browser.runtime.MessageSender) => {
@@ -197,6 +206,7 @@ const messageMap = new messagingMap([
     [Action.redirect, redirectTab],
     [Action.get_filters, sendFilters],
     [Action.update_blocked_images, updateBlockedImages],
+    [Action.update_report_queue, updateReportQueue]
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
@@ -232,6 +242,7 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                             reportCSS: reportCSS,
                             reportHTML: reportHTML,
                             base64src: info.srcUrl,
+                            reportQueue: result.reportQueue,
                         },
                     } });
                 }

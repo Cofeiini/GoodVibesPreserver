@@ -5,6 +5,7 @@ export enum Action {
     analyze_element,
     update_blocked_images,
     reporting_image,
+    update_report_queue,
 }
 
 export type browserMessage = {
