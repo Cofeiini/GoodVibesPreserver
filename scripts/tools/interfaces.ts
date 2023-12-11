@@ -4,6 +4,25 @@ export interface urlFilter
     tags: string[],
 }
 
+export type HTMLResources = {
+    [key: string]: string
+    blockedSiteHTML: string,
+    blockedElementHTML: string,
+    blockedElementSmallHTML: string,
+    gvpReportHTML: string,
+    gvpReportCSS: string,
+    gvpNotificationHTML: string,
+    gvpNotificationCSS: string,
+};
+
+export type fallbackResources = {
+    [key: string]: string
+    blockedElementHTML: string,
+    blockedElementSmallHTML: string,
+    gvpNotificationCSS: string,
+    gvpNotificationHTML: string,
+};
+
 export interface filterResults
 {
     url: URL,
