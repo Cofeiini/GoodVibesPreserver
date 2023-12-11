@@ -259,8 +259,18 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 let blockedSiteHTMLString: string;
 
 const isBlockedUrl = async (hostname: string, url: URL): Promise<filterResults> => {
-    const { blockedSiteHTML } = await browser.storage.local.get();
-    blockedSiteHTMLString = blockedSiteHTML;
+    const localStorage = await browser.storage.local.get();
+    const resources: HTMLResources = localStorage.documentResources;
+    if (!resources){
+        const fallbackResponse = await fetch("https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedsite.html?ref=main",{
+            headers:{
+                Authorization: `${filterToken}`,
+            }
+        });
+        const fallbackJSON: githubResponse = await fallbackResponse.json();
+        blockedSiteHTMLString = atob(fallbackJSON.content);
+    } else { blockedSiteHTMLString = resources.blockedSiteHTML; };
+    
     let isTemporarilyWhitelisted = false;
     const sessionWhitelistString = window.sessionStorage.getItem("whitelist");
     let sessionWhitelist: string[] = [];
