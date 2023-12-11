@@ -2,30 +2,30 @@ import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
 import { filterToken } from "../tools/token";
-import { urlFilter, githubResponse, filterResults } from "../tools/interfaces";
+import { urlFilter, githubResponse, filterResults, reportObject, HTMLResources, fallbackResources } from "../tools/interfaces";
 import { Optional } from "../tools/optional";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { v4 as uuidv4 } from "uuid";
-import { reportObject } from "../tools/interfaces";
 
 const filtersUrl: string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
-const HTMLResourcesUrls: string[] = [
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedsite.html?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelement.html?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.html?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.css?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
-];
 
-const fallbackResources: string[] = [
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelement.html?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
-    "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
-]
+const HTMLResourcesUrls: HTMLResources = {
+    blockedSiteHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedsite.html?ref=main",
+    blockedElementHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelement.html?ref=main",
+    blockedElementSmallHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main",
+    gvpReportHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.html?ref=main",
+    gvpReportCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.css?ref=main",
+    gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
+    gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
+};
+
+const fallbackResources: fallbackResources = {
+    blockedElementHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelement.html?ref=main",
+    blockedElementSmallHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main",
+    gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
+    gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
+};
 
 // Session whitelist
 
@@ -52,39 +52,35 @@ const updateWhitelist = (url: string): void => {
 
 //Local storage setup
 
-
-/* blockedSign: blockedSign,
-blockedSignSmall: blockedSignSmall,
-notificationCSSString: notificationCSSString,
-notificationHTMLString: notificationHTMLString, */
-
-const fetchResources = async (resourcesUrls: string[]): Promise<string[]> => {
-    const fetchedResources: string[] = [];
-    for (const resourceUrl of resourcesUrls){
-        const response = await fetch(resourceUrl, {
+const fetchResources = async (resources: HTMLResources | fallbackResources): Promise<HTMLResources | fallbackResources> => {
+    const fetchedResources: HTMLResources | fallbackResources = resources;
+    for (const [key, value] of Object.entries(resources)){
+        const response = await fetch(value, {
             headers: {
                 Authorization: `${filterToken}`,
             },
         });
         const responseJSON: githubResponse = await response.json();
-        fetchedResources.push(atob(responseJSON.content));
+        fetchedResources[key] = atob(responseJSON.content);
     }
     return Promise.resolve(fetchedResources);
 };
 
 browser.runtime.onInstalled.addListener(() => {
     fetchResources(HTMLResourcesUrls)
-        .then((fetchedHTMLResources: string[]) => {
+        .then((fetchedHTMLResources: HTMLResources | fallbackResources) => {
             browser.storage.local.set({
                 whitelist: [] as string[],
                 blockedAmount: 0,
-                blockedSiteHTML: fetchedHTMLResources[0],
-                blockedElementHTML: fetchedHTMLResources[1],
-                blockedElementSmallHTML: fetchedHTMLResources[2],
-                gvpreportHTML: fetchedHTMLResources[3],
-                gvpreportCSS: fetchedHTMLResources[4],
-                gvpnotificationHTML: fetchedHTMLResources[5],
-                gvpnotificationCSS: fetchedHTMLResources[6],
+                documentResources: {
+                    gvpReportHTML: fetchedHTMLResources.gvpReportHTML,
+                    gvpReportCSS: fetchedHTMLResources.gvpReportCSS,
+                    blockedSiteHTML: fetchedHTMLResources.blockedSiteHTML,
+                    blockedElementHTML: fetchedHTMLResources.blockedElementHTML,
+                    blockedElementSmallHTML: fetchedHTMLResources.blockedElementSmallHTML,
+                    gvpNotificationHTML: fetchedHTMLResources.gvpNotificationHTML,
+                    gvpNotificationCSS: fetchedHTMLResources.gvpNotificationCSS,
+                },
                 reportedImages: [] as string[],
                 reportQueue: [] as reportObject[],
                 userID: uuidv4(),
@@ -144,25 +140,26 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
         console.log("Asked for filters.");
         browser.storage.local.get()
             .then((result) => {
-                if (!result["gvpnotificationHTML"]){ // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
+                const documentResources: HTMLResources = result.documentResources;
+                if (!documentResources){ // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
                     console.log("Resources are undefined");
                     fetchResources(fallbackResources)
-                    .then(resources =>{
-                        console.log(resources);
-                        browser.tabs.sendMessage(senderId, {
-                            action: Action.send_filters,
-                            data: {
-                                content: {
-                                    filters: data,
-                                    blockedSign: resources[0],
-                                    blockedSignSmall: resources[1],
-                                    notificationCSSString: resources[2],
-                                    notificationHTMLString: resources[3],
-                                    reportedImages: result["reportedImages"],
+                        .then(resources => {
+                            console.log(resources);
+                            browser.tabs.sendMessage(senderId, {
+                                action: Action.send_filters,
+                                data: {
+                                    content: {
+                                        filters: data,
+                                        blockedSign: resources.blockedElementHTML,
+                                        blockedSignSmall: resources.blockedElementSmallHTML,
+                                        notificationCSSString: resources.gvpNotificationCSS,
+                                        notificationHTMLString: resources.gvpNotificationHTML,
+                                        reportedImages: [],
+                                    },
                                 },
-                            },
+                            });
                         });
-                    })
                     return;
                 }
                 browser.tabs.sendMessage(senderId, {
@@ -170,11 +167,11 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
                     data: {
                         content: {
                             filters: data,
-                            blockedSign: result["blockedElementHTML"],
-                            blockedSignSmall: result["blockedElementSmallHTML"],
-                            notificationCSSString: result["gvpnotificationCSS"],
-                            notificationHTMLString: result["gvpnotificationHTML"],
-                            reportedImages: result["reportedImages"],
+                            blockedSign: documentResources.blockedElementHTML,
+                            blockedSignSmall: documentResources.blockedElementSmallHTML,
+                            notificationCSSString: documentResources.gvpNotificationCSS,
+                            notificationHTMLString: documentResources.gvpNotificationHTML,
+                            reportedImages: result.reportedImages,
                         },
                     },
                 });
@@ -206,7 +203,7 @@ const messageMap = new messagingMap([
     [Action.redirect, redirectTab],
     [Action.get_filters, sendFilters],
     [Action.update_blocked_images, updateBlockedImages],
-    [Action.update_report_queue, updateReportQueue]
+    [Action.update_report_queue, updateReportQueue],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
@@ -230,8 +227,8 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
         browser.storage.local.get()
             .then((result) => {
                 if (info.srcUrl) {
-                    const reportHTML: string = result.gvpreportHTML;
-                    const reportCSS: string = result.gvpreportCSS;
+                    const resources: HTMLResources = result.documentResources;
+                    console.log(result);
                     const tabId = tab!.id!;
                     const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
                     browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
@@ -239,8 +236,8 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                             reportedImages: result.reportedImages,
                             src: reportedSrc,
                             userID: result.userID,
-                            reportCSS: reportCSS,
-                            reportHTML: reportHTML,
+                            reportCSS: resources.gvpReportCSS,
+                            reportHTML: resources.gvpReportHTML,
                             base64src: info.srcUrl,
                             reportQueue: result.reportQueue,
                         },
