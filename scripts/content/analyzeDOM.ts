@@ -97,7 +97,6 @@ const generateFilteredImage = (width: number, height: number): string => {
         canvasContext.fillStyle = gradient;
         canvasContext.fillRect(0, 0, width, height);
     }
-    console.trace(canvas);
     return canvas.toDataURL("image/png");
 };
 
@@ -220,8 +219,6 @@ const fetchFilters = () => {
 let notificationTimeout: NodeJS.Timeout | null = null;
 
 const makeNotification = (notificationText: string): void => {
-    console.log("Make notification called");
-    console.log(notificationHTMLString);
     document.getElementById("gvp-notification")?.remove();
     if (notificationTimeout){
         clearTimeout(notificationTimeout);
@@ -356,7 +353,6 @@ const messageMap = new messagingMap([
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
-    console.log(message.action);
     const requestedAction = messageMap.get(message.action);
     requestedAction(message, sender);
 });
