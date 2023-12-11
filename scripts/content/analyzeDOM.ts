@@ -1,8 +1,7 @@
 import SparkMD5 from "spark-md5";
-import { urlFilter } from "../tools/interfaces";
+import { urlFilter, reportObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import { Optional } from "../tools/optional";
-import { reportObject } from "../tools/interfaces";
 
 let filters: urlFilter[];
 let blockedSignString: string;
@@ -14,12 +13,12 @@ let reportQueue: reportObject[] = [];
 let maxZIndex: number = 0;
 
 const getMaxZIndex = (): void => {
-    maxZIndex = Math.max(...Array.from(document.querySelectorAll("body div, body img, body nav, body section"), (element) =>{
-      return parseInt(getComputedStyle(element).zIndex);
+    maxZIndex = Math.max(...Array.from(document.querySelectorAll("body div, body img, body nav, body section"), (element) => {
+        return parseInt(getComputedStyle(element).zIndex);
     }).filter(zIndex => !Number.isNaN(zIndex)));
     maxZIndex++;
     return;
-}
+};
 
 // Element filtering
 
@@ -270,10 +269,10 @@ const sendReport = (reportData: reportObject): void => {
         .then(response => {
             console.log(response.status);
             document.getElementById("gvp-alert")?.remove();
-            if(reportQueue.length){
-                const temp: reportObject = reportQueue[0]
+            if (reportQueue.length){
+                const temp: reportObject = reportQueue[0];
                 reportQueue.shift();
-                browser.runtime.sendMessage({action: Action.update_report_queue, data: { content: { reportQueue: reportQueue  } } });
+                browser.runtime.sendMessage({ action: Action.update_report_queue, data: { content: { reportQueue: reportQueue } } });
                 sendReport(temp);
             }
         })
@@ -281,10 +280,10 @@ const sendReport = (reportData: reportObject): void => {
             console.log(response.status);
             makeNotification("Failed to communicate with the server.\nThe report has been added to the queue of failed reports.");
             reportQueue.push(reportData);
-            browser.runtime.sendMessage({action: Action.update_report_queue, data: { content: { reportQueue: reportQueue  } } });
+            browser.runtime.sendMessage({ action: Action.update_report_queue, data: { content: { reportQueue: reportQueue } } });
             document.getElementById("gvp-alert")?.remove();
-        })
-}
+        });
+};
 
 const makeReport = function(reportData: reportObject, userReportedImages: string[]) {
     const selectedTags: string[] = [];
@@ -315,6 +314,7 @@ const reportImage = (message: browserMessage): void => {
     reportQueue = message.data.content.reportQueue;
     const reportDiv: HTMLDivElement = document.createElement("div");
     const reportStyle: HTMLStyleElement = document.createElement("style");
+    console.log(message.data.content.reportCSS);
     reportStyle.innerHTML = message.data.content.reportCSS;
     reportDiv.innerHTML = message.data.content.reportHTML;
     document.head.appendChild(reportStyle);
@@ -324,7 +324,7 @@ const reportImage = (message: browserMessage): void => {
         src: message.data.content.src,
         userID: message.data.content.userID,
         tags: [],
-        timeStamp: new Date().toISOString(),   
+        timeStamp: new Date().toISOString(),
     };
     let checkboxCounter: number = 0;
     (document.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = true;
