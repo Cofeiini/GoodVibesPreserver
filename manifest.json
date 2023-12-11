@@ -21,11 +21,20 @@
     "webRequest",
     "webRequestBlocking",
     "activeTab",
-    "windows"
+    "windows",
+    "storage",
+    "contextMenus"
   ],
 
   "background": {
     "scripts": ["scripts/background/background.js"],
     "persistent": true
-  }
+  },
+   
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["scripts/content/analyzeDOM.js"]
+    }
+  ]
 }
