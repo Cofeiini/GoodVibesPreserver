@@ -1,0 +1,68 @@
+#gvp-reveal-submit
+{
+    display: flex;
+    gap: 50px;
+    margin-top: 100px;
+}
+#gvp-reveal-submit button
+{
+    padding: 10px;
+    border-radius: 10px;
+    border: solid 2px rgb(255, 255, 255);
+    background-color: rgba(0, 0, 0, 0);
+    color: white;
+    cursor: pointer;
+}
+.gvp-feedback-checkboxes{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+body{
+    background-color: black;
+}
+#gvp-user-feedback-section{
+    background-color: rgb(223, 223, 223);
+    box-shadow: inset 0 0 2px 2px rgba(0, 0, 0, 0.781);
+    overflow-y: scroll;
+    overflow-x: hidden;
+    border-radius: 5px;
+    width: 300px;
+    height: 100px;
+    display: flex;
+    padding: 10px;
+    flex-direction: column;
+    align-items: center;
+    color: black;
+}
+#gvp-user-feedback
+{
+    font-family: Arial, Helvetica, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+#gvp-image-preview{
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 5px;
+}
+#gvp-reveal-image{
+    color: white;
+    position: fixed;
+    left: 50%;
+    top: 5%;
+    transform: translate(-50%);
+    width: 450px;
+    height: 600px;
+    background-color: rgb(22, 22, 22);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.gvp-reveal-title{
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+}
