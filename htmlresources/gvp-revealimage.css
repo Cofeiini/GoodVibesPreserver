@@ -1,8 +1,40 @@
+.gvp-positive-checkbox{
+    cursor: pointer;
+    border-radius: 20px;
+}
+.gvp-negative-checkbox{
+    cursor: pointer;
+    border-radius: 20px;
+}
+.gvp-positive-checkbox:hover{
+    background-color: rgb(12, 145, 0);
+    transition: 0.3s;
+}
+.gvp-negative-checkbox:hover{
+    background-color: rgb(179, 0, 0);
+    transition: 0.3s;
+}
+.gvp-feedback-checkboxes{
+    display: flex;
+    flex-direction: column;
+}
+.gvp-tagbox{
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    font-size: 15px;
+}
+.gvp-checkbox{
+    display: flex;
+}
+.gvp-checkbox img{
+    width: 40px;
+    height: 40px;
+}
 #gvp-reveal-submit
 {
     display: flex;
     gap: 50px;
-    margin-top: 100px;
 }
 #gvp-reveal-submit button
 {
@@ -56,12 +88,12 @@ body{
     top: 5%;
     transform: translate(-50%);
     width: 450px;
-    height: 600px;
     background-color: rgb(22, 22, 22);
     border-radius: 6px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 20px;
 }
 .gvp-reveal-title{
     font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
