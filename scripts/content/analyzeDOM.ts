@@ -1,15 +1,25 @@
-import SparkMD5 from "spark-md5";
-import { urlFilter, reportObject } from "../tools/interfaces";
+import SparkMD5, { hash } from "spark-md5";
+import { urlFilter, reportObject, imageFilter, tagCheckboxes, feedbackObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import { Optional } from "../tools/optional";
 
 let filters: urlFilter[];
+
+// HTML Resources
+
 let blockedSignString: string;
 let blockedSignSmallString: string;
 let notificationHTMLString: string;
 let notificationStyleString: string;
-let reportedImages: string[] = [];
-let reportQueue: reportObject[] = [];
+let revealImageHTMLString: string;
+let revealImageStyleString: string;
+
+//
+
+let reportedImages: string[] = []; // Stores hashed sources of images reported by the user
+let reportQueue: reportObject[] = []; // Stores failed report requests
+let imageFilters: imageFilter[] = []; // Stores hashed sources of images that will be filtered
+let votedImages: number[] = []; // Stores report_ID of images that the user gave feedback.
 let maxZIndex: number = 0;
 
 const getMaxZIndex = (): void => {
@@ -20,10 +30,38 @@ const getMaxZIndex = (): void => {
     return;
 };
 
+// GVP notification
+
+let notificationTimeout: NodeJS.Timeout | null = null;
+
+const makeNotification = (notificationText: string): void => {
+    document.getElementById("gvp-notification")?.remove();
+    if (notificationTimeout){
+        clearTimeout(notificationTimeout);
+    }
+    const notificationDiv: HTMLDivElement = document.createElement("div");
+    const notificationStyle: HTMLStyleElement = document.createElement("style");
+    notificationDiv.innerHTML = notificationHTMLString;
+    notificationStyle.innerHTML = notificationStyleString;
+    document.head.appendChild(notificationStyle);
+    document.body.appendChild(notificationDiv);
+    document.getElementById("gvp-notification")!.style.zIndex = maxZIndex.toString();
+    document.getElementById("gvp-notification-text")!.innerText = notificationText;
+    document.getElementById("gvp-close-notification")?.addEventListener("click", () => {
+        document.getElementById("gvp-notification")?.remove();
+    });
+
+    notificationTimeout = setTimeout(() => {
+        document.getElementById("gvp-notification")?.remove();
+    }, 8000);
+};
+
+//
+
 // Element filtering
 
 const blockedElementsSet: Set<{ blockedElement: Element, recoverID: number, url: string }> = new Set();
-const blockedImagesSet: Set<{ blockedSource: string, recoverID: number }> = new Set();
+const blockedImagesSet: Set<{ blockedSource: string, recoverID: number, tags: string }> = new Set();
 const skippedSources: Set<string> = new Set();
 let blockedImagesCounter = 0;
 let blockedElementsCounter = 0;
@@ -63,20 +101,111 @@ const makeWarning = (blockedElement: Element): string => {
     return serializer.serializeToString(newWarningHTML);
 };
 
+// Report feedback system
+
+const tags: string[] = ["hatespeech", "extremism", "misinformation", "offensivehumor", "sexualcontent", "harassment", "gore", "drugs", "selfharm", "shockingcontent"]; // For object iteration
+
+const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
+    const hasVotes: boolean = Object.entries(userVotes).some(([_, value]) => {
+        return (value.tagValue !== 0);
+    });
+    if (hasVotes){
+        votedImages.push(reportID);
+        browser.runtime.sendMessage({ action: Action.update_voted_images, data: { content: { updatedVotedImages: votedImages } } });
+        const feedbackData: feedbackObject = new feedbackObject();
+        feedbackData.reportID = reportID;
+        tags.forEach(tag => {
+            feedbackData[tag] = userVotes[tag].tagValue;
+        });
+        fetch("http://localhost:7070/reportfeedback", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(feedbackData),
+        })
+            .then(response => {
+                console.log(response);
+            })
+            .catch(err => {
+                console.error(err);
+            });
+        return;
+    }
+    console.log("Feedback without votes");
+};
+
 const recoverImage = (event: Event): void => {
     event.preventDefault();
-    const revealPrompt = window.confirm("Do you want to reveal this image? \nIt could contain unpleasant content.");
-    if (revealPrompt){
-        const recoverID = Number((event.target as HTMLElement).getAttribute("src-identifier"));
-        blockedImagesSet.forEach(element => {
-            if (element.recoverID === recoverID){
-                (event.target as HTMLImageElement).src = element.blockedSource;
-                skippedSources.add(element.blockedSource);
-                event.target?.removeEventListener("click", recoverImage);
-            }
-        });
+    if (document.getElementById("gvp-reveal-image")){
+        makeNotification("Cannot reveal multiple images at the same time");
+        return;
     }
+    const revealImageDiv: HTMLDivElement = document.createElement("div");
+    const revealImageStyle: HTMLStyleElement = document.createElement("style");
+    revealImageDiv.innerHTML = revealImageHTMLString;
+    revealImageStyle.innerHTML = revealImageStyleString;
+    const recoverID = Number((event.target as HTMLElement).getAttribute("src-identifier"));
+    blockedImagesSet.forEach(image => {
+        if (image.recoverID === recoverID){
+            const reportID: number | null = Number((event.target as HTMLElement).getAttribute("gvp-report-id"));
+            const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
+            const reportedByUser: boolean = !imageFilters.some(filter => filter.source === imageSource);
+            document.body.appendChild(revealImageDiv);
+            document.head.appendChild(revealImageStyle);
+            document.getElementById("gvp-reveal-image")!.style.zIndex = maxZIndex.toString();
+            if (reportedByUser || votedImages.includes(reportID)){
+                document.getElementById("gvp-user-feedback")?.remove();
+            }
+            (document.getElementById("gvp-image-preview") as HTMLImageElement).src = image.blockedSource;
+            const positiveCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-positive-checkbox");
+            const negativeCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-negative-checkbox");
+            const userVotes: tagCheckboxes = new tagCheckboxes();
+            positiveCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener("click", () => {
+                    const tagString: string = checkbox.id.split("-").at(3)!;
+                    userVotes[tagString].checkedPositive = !(userVotes[tagString].checkedPositive);
+                    (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedPositive) ? "green" : "transparent";
+                    if (userVotes[tagString].checkedPositive){
+                        userVotes[tagString].checkedNegative = false;
+                        document.getElementById(`gvp-negative-checkbox-${tagString}`)!.style.backgroundColor = "transparent";
+                    }
+                    userVotes[tagString].tagValue = (Number(userVotes[tagString].checkedNegative) ^ Number(userVotes[tagString].checkedPositive)) - (Number(userVotes[tagString].checkedNegative) << 1);
+                });
+            });
+            negativeCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener("click", () => {
+                    const tagString: string = checkbox.id.split("-").at(3)!;
+                    userVotes[tagString].checkedNegative = !(userVotes[tagString].checkedNegative);
+                    (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedNegative) ? "red" : "transparent";
+                    if (userVotes[tagString].checkedNegative){
+                        userVotes[tagString].checkedPositive = false;
+                        document.getElementById(`gvp-positive-checkbox-${tagString}`)!.style.backgroundColor = "transparent";
+                    }
+                    userVotes[tagString].tagValue = (Number(userVotes[tagString].checkedNegative) ^ Number(userVotes[tagString].checkedPositive)) - (Number(userVotes[tagString].checkedNegative) << 1);
+                });
+            });
+
+            document.getElementById("gvp-noreveal-button")?.addEventListener("click", () => {
+                document.getElementById("gvp-reveal-image")?.remove();
+                if (reportID && !reportedByUser){
+                    sendFeedback(userVotes, reportID);
+                }
+            });
+            document.getElementById("gvp-reveal-button")?.addEventListener("click", () => {
+                (event.target as HTMLImageElement).src = image.blockedSource;
+                document.getElementById("gvp-reveal-image")?.remove();
+                skippedSources.add(image.blockedSource);
+                event.target?.removeEventListener("click", recoverImage);
+                if (reportID && !reportedByUser){
+                    sendFeedback(userVotes, reportID);
+                }
+            });
+        }
+    });
 };
+
+//
 
 /**
  * @param width Width in pixels of the image that is getting filtered.
@@ -101,15 +230,25 @@ const generateFilteredImage = (width: number, height: number): string => {
 };
 
 const filterImage = (image: HTMLImageElement): void => {
-    if (!image.getAttribute("src-identifier")){
+    if (!image.getAttribute("src-identifier") && image.id !== "gvp-image-preview"){
         const imageWidth = image.naturalWidth;
         const imageHeight = image.naturalHeight;
         const imageSource: string = (/^data/.test(image.src) ? SparkMD5.hash(image.src) : image.src);
-        if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && reportedImages.includes(imageSource)){
+        const isInFilters: boolean = imageFilters.some(filter => filter.source === imageSource);
+        let imageTags: string = "";
+        let reportID: number = 0;
+        imageFilters.forEach(img => {
+            if (img.source === imageSource){
+                imageTags = img.tags;
+                reportID = img.id;
+            }
+        });
+        if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (reportedImages.includes(imageSource) || isInFilters)){
             const filteredImage = generateFilteredImage(imageWidth, imageHeight);
             blockedImagesCounter++;
-            blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter });
+            blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
             image.setAttribute("src-identifier", `${blockedImagesCounter}`);
+            image.setAttribute("gvp-report-id", `${reportID}`);
             image.src = filteredImage;
             image.addEventListener("click", recoverImage);
         }
@@ -177,14 +316,12 @@ const analyzeDOM = (): void => {
             const elementUrl = DOMElement.url?.split("/")[2]; // TODO: rework filters, probably add a '^' on the beginning of the pattern because this line is needed to avoid matching URLs with other URLs in the URL parameters.
             if (elementUrl){
                 if (filterRegExp.test(elementUrl) && !activeRegEx.test(elementUrl) && !DOMElement.element.hasAttribute("blocked-identifier")){
-                    console.log(`Removed element: ${DOMElement.url, DOMElement.element}`);
                     blockedElementsCounter++;
                     blockedElementsSet.add({ blockedElement: DOMElement.element, recoverID: blockedElementsCounter, url: DOMElement.element.getAttribute("href") || DOMElement.element.getAttribute("src") || "" });
                     DOMElement.element.setAttribute("blocked-identifier", "blocked");
                     const warningSign: DocumentFragment = document.createRange().createContextualFragment(makeWarning(DOMElement.element));
                     DOMElement.element.parentNode?.replaceChild(warningSign, DOMElement.element);
                     document.getElementById(`recover-button-${blockedElementsCounter}`)?.addEventListener("click", recoverElement);
-                    console.log("Blocked content.");
                 }
             }
         });
@@ -195,56 +332,30 @@ const analyzeDOM = (): void => {
 
 // Messaging system
 
-const setupFilters = (message: browserMessage) => {
-    console.log(message);
+const setupStorage = (message: browserMessage) => {
     filters = message.data.content.filters;
     blockedSignString = message.data.content.blockedSign;
     blockedSignSmallString = message.data.content.blockedSignSmall;
     notificationHTMLString = message.data.content.notificationHTMLString;
     notificationStyleString = message.data.content.notificationCSSString;
+    revealImageHTMLString = message.data.content.gvpRevealImageHTML;
+    revealImageStyleString = message.data.content.gvpRevealImageCSS;
+    imageFilters = message.data.content.imageFilters;
     reportedImages = message.data.content.reportedImages;
+    votedImages = message.data.content.votedImages;
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };
 
-const fetchFilters = () => {
-    console.log("Fetch filters called.");
+const fetchStorage = () => {
     browser.runtime.sendMessage({ action: Action.get_filters, data: {} });
     getMaxZIndex();
 };
 
 //
 
-// GVP notification
-
-let notificationTimeout: NodeJS.Timeout | null = null;
-
-const makeNotification = (notificationText: string): void => {
-    document.getElementById("gvp-notification")?.remove();
-    if (notificationTimeout){
-        clearTimeout(notificationTimeout);
-    }
-    const notificationDiv: HTMLDivElement = document.createElement("div");
-    const notificationStyle: HTMLStyleElement = document.createElement("style");
-    notificationDiv.innerHTML = notificationHTMLString;
-    notificationStyle.innerHTML = notificationStyleString;
-    document.head.appendChild(notificationStyle);
-    document.body.appendChild(notificationDiv);
-    document.getElementById("gvp-notification")!.style.zIndex = maxZIndex.toString();
-    document.getElementById("gvp-notification-text")!.innerText = notificationText;
-    document.getElementById("gvp-close-notification")?.addEventListener("click", () => {
-        document.getElementById("gvp-notification")?.remove();
-    });
-
-    notificationTimeout = setTimeout(() => {
-        document.getElementById("gvp-notification")?.remove();
-    }, 8000);
-};
-
-//
-
 // Report system
 
-const tagsId: string[] = [
+const checkboxesTagsId: string[] = [
     "gvp-harassment-checkbox",
     "gvp-selfharm-checkbox",
     "gvp-offensivehumor-checkbox",
@@ -253,6 +364,7 @@ const tagsId: string[] = [
     "gvp-drugs-checkbox",
     "gvp-sexualcontent-checkbox",
     "gvp-misinformation-checkbox",
+    "gvp-shockingcontent-checkbox",
 ];
 
 const sendReport = (reportData: reportObject): void => {
@@ -286,7 +398,7 @@ const makeReport = function(reportData: reportObject, userReportedImages: string
     const selectedTags: string[] = [];
     userReportedImages.push(reportData.src);
     browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: { updatedBlockedImages: userReportedImages } } });
-    tagsId.forEach(tag => {
+    checkboxesTagsId.forEach(tag => {
         const checkbox: HTMLInputElement = document.getElementById(`${tag}`) as HTMLInputElement;
         if (checkbox.checked){
             selectedTags.push(tag.split("-").at(1)!);
@@ -325,8 +437,8 @@ const reportImage = (message: browserMessage): void => {
     };
     let checkboxCounter: number = 0;
     (document.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = true;
-    const tagCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-checkbox");
-    tagCheckboxes.forEach(checkbox => {
+    const reportCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-checkbox");
+    reportCheckboxes.forEach(checkbox => {
         checkbox.addEventListener("change", (event) => {
             const checkBoxValue = ((event.target as HTMLInputElement).checked ? 1 : -1);
             checkboxCounter += checkBoxValue;
@@ -348,7 +460,7 @@ const reportImage = (message: browserMessage): void => {
 // Messaging setup
 
 const messageMap = new messagingMap([
-    [Action.send_filters, setupFilters],
+    [Action.send_filters, setupStorage],
     [Action.reporting_image, reportImage],
 ]);
 
@@ -362,9 +474,9 @@ browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.
 // Fetchs filters as soon as the website finishes loading.
 
 if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", fetchFilters);
+    document.addEventListener("DOMContentLoaded", fetchStorage);
 } else {
-    fetchFilters();
+    fetchStorage();
 }
 
 // Mutation observer setup.
