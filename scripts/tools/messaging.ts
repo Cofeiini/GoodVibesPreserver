@@ -6,6 +6,7 @@ export enum Action {
     update_blocked_images,
     reporting_image,
     update_report_queue,
+    update_voted_images,
 }
 
 export type browserMessage = {
