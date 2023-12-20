@@ -1,5 +1,5 @@
-import SparkMD5, { hash } from "spark-md5";
-import { urlFilter, reportObject, imageFilter, tagCheckboxes, feedbackObject } from "../tools/interfaces";
+import SparkMD5 from "spark-md5";
+import { urlFilter, reportObject, imageFilter, tagCheckboxes, feedbackObject, failedRequest } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import { Optional } from "../tools/optional";
 
@@ -17,7 +17,6 @@ let revealImageStyleString: string;
 //
 
 let reportedImages: string[] = []; // Stores hashed sources of images reported by the user
-let reportQueue: reportObject[] = []; // Stores failed report requests
 let imageFilters: imageFilter[] = []; // Stores hashed sources of images that will be filtered
 let votedImages: number[] = []; // Stores report_ID of images that the user gave feedback.
 let maxZIndex: number = 0;
@@ -36,7 +35,7 @@ let notificationTimeout: NodeJS.Timeout | null = null;
 
 const makeNotification = (notificationText: string): void => {
     document.getElementById("gvp-notification")?.remove();
-    if (notificationTimeout){
+    if (notificationTimeout) {
         clearTimeout(notificationTimeout);
     }
     const notificationDiv: HTMLDivElement = document.createElement("div");
@@ -56,6 +55,10 @@ const makeNotification = (notificationText: string): void => {
     }, 8000);
 };
 
+const backgroundNotification = (message: browserMessage): void => { // Notifications that are triggered from the background script will call this function
+    makeNotification(message.data.content.notificationText);
+};
+
 //
 
 // Element filtering
@@ -72,7 +75,7 @@ let blockedElementsCounter = 0;
  */
 const analyzeElement = (element: Element): string => {
     const elementHTML: HTMLElement = (element as HTMLElement);
-    if (elementHTML.offsetWidth <= 134 || elementHTML.offsetHeight <= 52){
+    if (elementHTML.offsetWidth <= 134 || elementHTML.offsetHeight <= 52) {
         return blockedSignSmallString;// 134 pixels of width and 52 pixels of height is the minimum dimensions for the warning sign to look correctly.
     }
     return blockedSignString;
@@ -92,7 +95,7 @@ const makeWarning = (blockedElement: Element): string => {
     const newWarningHTML: Document = parser.parseFromString(measuredWarningSize, "text/html");
     const blockedContainer = new Optional<HTMLElement>(newWarningHTML.getElementById("blocked-container-?"));
     const revealButton = new Optional<HTMLElement>(newWarningHTML.getElementById("recover-button-?"));
-    if (measuredWarningSize === blockedSignSmallString){
+    if (measuredWarningSize === blockedSignSmallString) {
         blockedContainer.value().style.width = elementWidth.toString();
         blockedContainer.value().style.height = elementHeight.toString();
     }
@@ -101,15 +104,23 @@ const makeWarning = (blockedElement: Element): string => {
     return serializer.serializeToString(newWarningHTML);
 };
 
+// Message background script to make requests
+
+const sendData = (requestData: feedbackObject | reportObject, route: string): void => {
+    browser.runtime.sendMessage({ action: Action.make_request, data: { content: { requestData: requestData, route: route } } });
+};
+
+//
+
 // Report feedback system
 
 const tags: string[] = ["hatespeech", "extremism", "misinformation", "offensivehumor", "sexualcontent", "harassment", "gore", "drugs", "selfharm", "shockingcontent"]; // For object iteration
 
 const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
-    const hasVotes: boolean = Object.entries(userVotes).some(([_, value]) => {
+    const hasVotes: boolean = Object.values(userVotes).some(value => {
         return (value.tagValue !== 0);
     });
-    if (hasVotes){
+    if (hasVotes) {
         votedImages.push(reportID);
         browser.runtime.sendMessage({ action: Action.update_voted_images, data: { content: { updatedVotedImages: votedImages } } });
         const feedbackData: feedbackObject = new feedbackObject();
@@ -117,27 +128,21 @@ const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
         tags.forEach(tag => {
             feedbackData[tag] = userVotes[tag].tagValue;
         });
-        fetch("http://localhost:7070/reportfeedback", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(feedbackData),
-        })
-            .then(response => {
-                console.log(response);
-            })
-            .catch(err => {
-                console.error(err);
-            });
-        return;
+        sendData(feedbackData, "reportfeedback");
     }
     console.log("Feedback without votes");
 };
 
-const recoverImage = (event: Event): void => {
+const revealImage = (event: Event): void => {
     event.preventDefault();
-    if (document.getElementById("gvp-reveal-image")){
+    const targetImageSrc = (event.target as HTMLImageElement).src;
+    browser.runtime.sendMessage({ action: Action.get_voted_images, data: { content: { imageSrc: targetImageSrc } } });
+};
+
+const revealImagePrompt = (message: browserMessage): void => {
+    const targetImage: HTMLElement = document.querySelector(`img[src="${message.data.content.imageSrc}"]`)!;
+    votedImages = message.data.content.votedImages;
+    if (document.getElementById("gvp-reveal-image")) {
         makeNotification("Cannot reveal multiple images at the same time");
         return;
     }
@@ -145,28 +150,29 @@ const recoverImage = (event: Event): void => {
     const revealImageStyle: HTMLStyleElement = document.createElement("style");
     revealImageDiv.innerHTML = revealImageHTMLString;
     revealImageStyle.innerHTML = revealImageStyleString;
-    const recoverID = Number((event.target as HTMLElement).getAttribute("src-identifier"));
+    const recoverID = Number(targetImage.getAttribute("src-identifier"));
     blockedImagesSet.forEach(image => {
-        if (image.recoverID === recoverID){
-            const reportID: number | null = Number((event.target as HTMLElement).getAttribute("gvp-report-id"));
+        if (image.recoverID === recoverID) {
+            const reportID: number | null = Number(targetImage.getAttribute("gvp-report-id"));
             const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
-            const reportedByUser: boolean = !imageFilters.some(filter => filter.source === imageSource);
+            const reportedByUser: boolean = reportedImages.includes(imageSource);
             document.body.appendChild(revealImageDiv);
             document.head.appendChild(revealImageStyle);
             document.getElementById("gvp-reveal-image")!.style.zIndex = maxZIndex.toString();
-            if (reportedByUser || votedImages.includes(reportID)){
+            if (reportedByUser || votedImages.includes(reportID)) {
                 document.getElementById("gvp-user-feedback")?.remove();
             }
             (document.getElementById("gvp-image-preview") as HTMLImageElement).src = image.blockedSource;
             const positiveCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-positive-checkbox");
             const negativeCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-negative-checkbox");
             const userVotes: tagCheckboxes = new tagCheckboxes();
+
             positiveCheckboxes.forEach(checkbox => {
                 checkbox.addEventListener("click", () => {
                     const tagString: string = checkbox.id.split("-").at(3)!;
                     userVotes[tagString].checkedPositive = !(userVotes[tagString].checkedPositive);
                     (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedPositive) ? "green" : "transparent";
-                    if (userVotes[tagString].checkedPositive){
+                    if (userVotes[tagString].checkedPositive) {
                         userVotes[tagString].checkedNegative = false;
                         document.getElementById(`gvp-negative-checkbox-${tagString}`)!.style.backgroundColor = "transparent";
                     }
@@ -178,7 +184,7 @@ const recoverImage = (event: Event): void => {
                     const tagString: string = checkbox.id.split("-").at(3)!;
                     userVotes[tagString].checkedNegative = !(userVotes[tagString].checkedNegative);
                     (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedNegative) ? "red" : "transparent";
-                    if (userVotes[tagString].checkedNegative){
+                    if (userVotes[tagString].checkedNegative) {
                         userVotes[tagString].checkedPositive = false;
                         document.getElementById(`gvp-positive-checkbox-${tagString}`)!.style.backgroundColor = "transparent";
                     }
@@ -188,16 +194,18 @@ const recoverImage = (event: Event): void => {
 
             document.getElementById("gvp-noreveal-button")?.addEventListener("click", () => {
                 document.getElementById("gvp-reveal-image")?.remove();
-                if (reportID && !reportedByUser){
+                if (reportID !== 0 && !reportedByUser) {
                     sendFeedback(userVotes, reportID);
                 }
             });
             document.getElementById("gvp-reveal-button")?.addEventListener("click", () => {
-                (event.target as HTMLImageElement).src = image.blockedSource;
+                document.querySelectorAll(`img[src="${message.data.content.imageSrc}"]`).forEach(img => {
+                    (img as HTMLImageElement).src = image.blockedSource;
+                });
                 document.getElementById("gvp-reveal-image")?.remove();
                 skippedSources.add(image.blockedSource);
-                event.target?.removeEventListener("click", recoverImage);
-                if (reportID && !reportedByUser){
+                targetImage.removeEventListener("click", revealImage);
+                if (reportID !== 0 && !reportedByUser) {
                     sendFeedback(userVotes, reportID);
                 }
             });
@@ -219,7 +227,7 @@ const generateFilteredImage = (width: number, height: number): string => {
     canvas.height = height;
 
     const canvasContext = canvas.getContext("2d");
-    if (canvasContext){
+    if (canvasContext) {
         const gradient = canvasContext.createLinearGradient(0, 0, width, height);
         gradient.addColorStop(0, "rgb(10,10,10)");
         gradient.addColorStop(1, "rgb(55,55,55)");
@@ -230,27 +238,30 @@ const generateFilteredImage = (width: number, height: number): string => {
 };
 
 const filterImage = (image: HTMLImageElement): void => {
-    if (!image.getAttribute("src-identifier") && image.id !== "gvp-image-preview"){
+    if (!image.getAttribute("src-identifier") && image.id !== "gvp-image-preview") {
         const imageWidth = image.naturalWidth;
         const imageHeight = image.naturalHeight;
         const imageSource: string = (/^data/.test(image.src) ? SparkMD5.hash(image.src) : image.src);
-        const isInFilters: boolean = imageFilters.some(filter => filter.source === imageSource);
+        let isInFilters: boolean = false;
         let imageTags: string = "";
         let reportID: number = 0;
-        imageFilters.forEach(img => {
-            if (img.source === imageSource){
-                imageTags = img.tags;
-                reportID = img.id;
-            }
-        });
-        if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (reportedImages.includes(imageSource) || isInFilters)){
+        if (imageFilters) {
+            isInFilters = imageFilters.some(filter => filter.source === imageSource);
+            imageFilters.forEach(img => {
+                if (img.source === imageSource) {
+                    imageTags = img.tags;
+                    reportID = img.id;
+                }
+            });
+        }
+        if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (reportedImages.includes(imageSource) || isInFilters)) {
             const filteredImage = generateFilteredImage(imageWidth, imageHeight);
             blockedImagesCounter++;
             blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
             image.setAttribute("src-identifier", `${blockedImagesCounter}`);
             image.setAttribute("gvp-report-id", `${reportID}`);
             image.src = filteredImage;
-            image.addEventListener("click", recoverImage);
+            image.addEventListener("click", revealImage);
         }
     }
 };
@@ -258,7 +269,7 @@ const filterImage = (image: HTMLImageElement): void => {
 const analyzeImages = (images: NodeListOf<Element>): void => {
     images.forEach(image => {
         const imageElement = (image as HTMLImageElement);
-        if (imageElement.complete){
+        if (imageElement.complete) {
             filterImage(imageElement);
             return;
         }
@@ -276,11 +287,11 @@ const recoverElement = (event: Event): void => {
     const recoverID: number = Number(regexID?.at(1));
     const blockedContainer: HTMLElement | null = document.getElementById(`blocked-container-${recoverID}`); // Gets the proper container that represents the blocked element tied to the button.
     blockedElementsSet.forEach(elem => {
-        if (elem.recoverID === recoverID){
-            if (blockedContainer){
+        if (elem.recoverID === recoverID) {
+            if (blockedContainer) {
                 console.log(elem.blockedElement);
                 const recoverPrompt: boolean = window.confirm(`Do you want to recover this element? \n The source of the element comes from a blocked URL: ${elem.url}`);
-                if (recoverPrompt){
+                if (recoverPrompt) {
                     blockedContainer.parentNode?.replaceChild(elem.blockedElement, blockedContainer);// Replaces the blocked element warning sign with the original element.
                 }
                 return;
@@ -314,8 +325,8 @@ const analyzeDOM = (): void => {
         const filterRegExp = new RegExp(filter.pattern);
         elementSet.forEach(DOMElement => {
             const elementUrl = DOMElement.url?.split("/")[2]; // TODO: rework filters, probably add a '^' on the beginning of the pattern because this line is needed to avoid matching URLs with other URLs in the URL parameters.
-            if (elementUrl){
-                if (filterRegExp.test(elementUrl) && !activeRegEx.test(elementUrl) && !DOMElement.element.hasAttribute("blocked-identifier")){
+            if (elementUrl) {
+                if (filterRegExp.test(elementUrl) && !activeRegEx.test(elementUrl) && !DOMElement.element.hasAttribute("blocked-identifier")) {
                     blockedElementsCounter++;
                     blockedElementsSet.add({ blockedElement: DOMElement.element, recoverID: blockedElementsCounter, url: DOMElement.element.getAttribute("href") || DOMElement.element.getAttribute("src") || "" });
                     DOMElement.element.setAttribute("blocked-identifier", "blocked");
@@ -343,6 +354,7 @@ const setupStorage = (message: browserMessage) => {
     imageFilters = message.data.content.imageFilters;
     reportedImages = message.data.content.reportedImages;
     votedImages = message.data.content.votedImages;
+    // Probably make an object instead of storing in individual variables.
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };
 
@@ -367,63 +379,36 @@ const checkboxesTagsId: string[] = [
     "gvp-shockingcontent-checkbox",
 ];
 
-const sendReport = (reportData: reportObject): void => {
-    fetch("http://localhost:7070/report", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(reportData),
-    })
-        .then(response => {
-            console.log(response.status);
-            document.getElementById("gvp-alert")?.remove();
-            if (reportQueue.length){
-                const temp: reportObject = reportQueue[0];
-                reportQueue.shift();
-                browser.runtime.sendMessage({ action: Action.update_report_queue, data: { content: { reportQueue: reportQueue } } });
-                sendReport(temp);
-            }
-        })
-        .catch((response) => {
-            console.log(response.status);
-            makeNotification("Failed to communicate with the server.\nThe report has been added to the queue of failed reports.");
-            reportQueue.push(reportData);
-            browser.runtime.sendMessage({ action: Action.update_report_queue, data: { content: { reportQueue: reportQueue } } });
-            document.getElementById("gvp-alert")?.remove();
-        });
-};
-
-const makeReport = function(reportData: reportObject, userReportedImages: string[]) {
+const makeReport = (reportData: reportObject, userReportedImages: string[]): void => {
     const selectedTags: string[] = [];
     userReportedImages.push(reportData.src);
     browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: { updatedBlockedImages: userReportedImages } } });
     checkboxesTagsId.forEach(tag => {
         const checkbox: HTMLInputElement = document.getElementById(`${tag}`) as HTMLInputElement;
-        if (checkbox.checked){
+        if (checkbox.checked) {
             selectedTags.push(tag.split("-").at(1)!);
         }
     });
 
     reportData.tags = selectedTags;
-    sendReport(reportData);
+    sendData(reportData, "report");
+    document.getElementById("gvp-alert")?.remove();
 };
 
 const reportImage = (message: browserMessage): void => {
-    const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${message.data.content.base64src}"]`);
-    if (reportedImage?.getAttribute("src-identifier")){
+    const imageSource: string = message.data.content.base64src;
+    const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${imageSource}"]`);
+    reportedImages = message.data.content.reportedImages;
+    if (reportedImage?.getAttribute("src-identifier") || reportedImages.includes((/^data/.test(imageSource) ? SparkMD5.hash(imageSource) : imageSource))) {
         makeNotification("This image has been reported already.");
         return;
     }
-    if (document.getElementById("gvp-alert")){
+    if (document.getElementById("gvp-alert")) {
         makeNotification("Cannot make multiple reports at the same time.");
         return;
     }
-    reportedImages = message.data.content.reportedImages;
-    reportQueue = message.data.content.reportQueue;
     const reportDiv: HTMLDivElement = document.createElement("div");
     const reportStyle: HTMLStyleElement = document.createElement("style");
-    console.log(message.data.content.reportCSS);
     reportStyle.innerHTML = message.data.content.reportCSS;
     reportDiv.innerHTML = message.data.content.reportHTML;
     document.head.appendChild(reportStyle);
@@ -451,7 +436,6 @@ const reportImage = (message: browserMessage): void => {
     document.getElementById("gvp-submit-button")?.addEventListener("click", () => {
         makeReport(reportData, reportedImages);
     });
-    console.log(`User Blocked Images: ${reportedImages}`);
     analyzeDOM(); // Call analyzeDOM() to block the image that has been reported.
 };
 
@@ -462,6 +446,8 @@ const reportImage = (message: browserMessage): void => {
 const messageMap = new messagingMap([
     [Action.send_filters, setupStorage],
     [Action.reporting_image, reportImage],
+    [Action.reveal_image_prompt, revealImagePrompt],
+    [Action.make_notification, backgroundNotification],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
@@ -473,7 +459,7 @@ browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.
 
 // Fetchs filters as soon as the website finishes loading.
 
-if (document.readyState === "loading"){
+if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", fetchStorage);
 } else {
     fetchStorage();
@@ -481,9 +467,7 @@ if (document.readyState === "loading"){
 
 // Mutation observer setup.
 
-const mutationObserver = new MutationObserver(() => {
-    analyzeDOM();
-});
+const mutationObserver = new MutationObserver(analyzeDOM);
 
 const observerConfig = { childList: true, subtree: true, attributes: true, characterData: true };
 

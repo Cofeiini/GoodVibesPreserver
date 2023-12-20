@@ -1,5 +1,4 @@
-export interface urlFilter
-{
+export interface urlFilter {
     pattern: RegExp,
     tags: string[],
 }
@@ -25,13 +24,13 @@ export class feedbackObject {
     shockingcontent = 0;
 }
 
-export class tagInnerStructure{
+export class tagInnerStructure {
     checkedNegative = false;
     checkedPositive = false;
     tagValue = 0;
 }
 
-export class tagCheckboxes{
+export class tagCheckboxes {
     [key: string]: tagInnerStructure;
     hatespeech = new tagInnerStructure();
     extremism = new tagInnerStructure();
@@ -68,8 +67,7 @@ export type fallbackResources = {
     gvpRevealImageCSS: string,
 };
 
-export interface filterResults
-{
+export interface filterResults {
     url: URL,
     sitename: string,
     tags: string[],
@@ -99,4 +97,9 @@ export type reportObject = {
     userID: string,
     tags: string[],
     timeStamp: string,
+};
+
+export type failedRequest = {
+    data: feedbackObject | reportObject,
+    route: string,
 };

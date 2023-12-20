@@ -7,6 +7,10 @@ export enum Action {
     reporting_image,
     update_report_queue,
     update_voted_images,
+    make_request,
+    get_voted_images,
+    reveal_image_prompt,
+    make_notification,
 }
 
 export type browserMessage = {
@@ -41,8 +45,8 @@ export class messagingMap extends Map<Action, CustomFunction> {
      * @returns
      * The function that matches the @param key, will return a void function with a debug message as fallback if key isn't found.
      */
-    get(key: Action){
-        if (this.has(key)){
+    get(key: Action) {
+        if (this.has(key)) {
             return super.get(key) as CustomFunction;
         }
         return () => {

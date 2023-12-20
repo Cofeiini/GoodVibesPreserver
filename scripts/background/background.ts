@@ -2,7 +2,7 @@ import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
 import { filterToken } from "../tools/token";
-import { urlFilter, githubResponse, filterResults, reportObject, HTMLResources, fallbackResources, imageFilter } from "../tools/interfaces";
+import { urlFilter, githubResponse, filterResults, reportObject, HTMLResources, fallbackResources, imageFilter, failedRequest, feedbackObject } from "../tools/interfaces";
 import { Optional } from "../tools/optional";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
@@ -40,12 +40,12 @@ type whitelist = {
 const updateWhitelist = (url: string): void => {
     const whitelistString = window.sessionStorage.getItem("whitelist");
     let whitelistArray: string[] = [];
-    if (whitelistString){ // Checks for URLs already temporarily stored, if not it just creates a new whitelist with the current URL being whitelisted.
+    if (whitelistString) { // Checks for URLs already temporarily stored, if not it just creates a new whitelist with the current URL being whitelisted.
         const whitelistObject: whitelist = JSON.parse(whitelistString);
         whitelistArray = whitelistObject.whitelist;
     }
 
-    if (!whitelistArray.includes(url)){
+    if (!whitelistArray.includes(url)) {
         whitelistArray.push(url);
     }
 
@@ -60,7 +60,7 @@ const fetchDatabase = () => {
     browser.storage.local.get()
         .then((storage) => {
             let userID = storage.userID;
-            if (!userID){
+            if (!userID) {
                 userID = uuidv4();
                 browser.storage.local.set({ userID: userID });
                 console.log(`User ID getfilters; ${userID}`);
@@ -72,7 +72,7 @@ const fetchDatabase = () => {
                 .then(result => {
                     const imageFilters: imageFilter[] = [];
                     console.log(result);
-                    for (let i = 0; i < result.reports.length; i++){
+                    for (let i = 0; i < result.reports.length; i++) {
                         imageFilters.push({
                             source: result.reports[i].source,
                             tags: result.reports[i].tags,
@@ -89,7 +89,7 @@ fetchDatabase();
 
 const fetchResources = async (resources: HTMLResources | fallbackResources): Promise<HTMLResources | fallbackResources> => {
     const fetchedResources: HTMLResources | fallbackResources = resources;
-    for (const [key, value] of Object.entries(resources)){
+    for (const [key, value] of Object.entries(resources)) {
         const response = await fetch(value, {
             headers: {
                 Authorization: `${filterToken}`,
@@ -119,12 +119,12 @@ browser.runtime.onInstalled.addListener(() => {
                     gvpRevealImageCSS: fetchedHTMLResources.gvpRevealImageCSS,
                 },
                 reportedImages: [] as string[],
-                reportQueue: [] as reportObject[],
+                requestQueue: [] as failedRequest[],
                 votedImages: [] as number[],
             });
             browser.storage.local.get("userID")
                 .then(result => {
-                    if (!result.userID){
+                    if (!result.userID) {
                         browser.storage.local.set({ userID: uuidv4() });
                     }
                 });
@@ -184,7 +184,7 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
         browser.storage.local.get()
             .then((result) => {
                 const documentResources: HTMLResources = result.documentResources;
-                if (!documentResources){ // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
+                if (!documentResources) { // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
                     console.log("Resources are undefined");
                     fetchResources(fallbackResources)
                         .then(resources => {
@@ -231,7 +231,7 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
 };
 
 const redirectTab = (message: browserMessage, sender: browser.runtime.MessageSender) => {
-    if (sender.tab?.id){
+    if (sender.tab?.id) {
         const targetUrl: string = message.data.content.url;
         console.log(targetUrl);
         const urlParts = targetUrl.split("/");
@@ -240,8 +240,14 @@ const redirectTab = (message: browserMessage, sender: browser.runtime.MessageSen
     }
 };
 
-const updateReportQueue = (message: browserMessage): void => {
-    browser.storage.local.set({ reportQueue: message.data.content.reportQueue });
+const updateRequestQueue = async (message: browserMessage): Promise<void> => {
+    const storageQueue = await browser.storage.local.get("requestQueue");
+    const requestQueue = storageQueue["requestQueue"];
+    const tabQueue: failedRequest[] = message.data.content.requestQueue;
+    tabQueue.forEach(request => {
+        requestQueue.push(request);
+    });
+    browser.storage.local.set({ requestQueue: requestQueue });
 };
 
 const updateBlockedImages = (message: browserMessage): void => {
@@ -252,12 +258,49 @@ const updateVotedImages = (message: browserMessage): void => {
     browser.storage.local.set({ votedImages: message.data.content.updatedVotedImages });
 };
 
+const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
+    const route: string = message.data.content.route;
+    const requestData: reportObject | feedbackObject = message.data.content.requestData;
+    browser.storage.local.get()
+        .then(storage => {
+            const requestQueue: failedRequest[] = storage["requestQueue"];
+            fetch(`http://localhost:7070/${route}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestData),
+            })
+                .then(response => {
+                    console.log(`Request status: ${response.status}`);
+                })
+                .catch((error) => {
+                    console.log(error);
+                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
+                    requestQueue.push({ data: requestData, route: route });
+                    browser.storage.local.set({ requestQueue: requestQueue });
+                });
+        });
+};
+
+const sendVotedImages = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
+    browser.storage.local.get()
+        .then(result => {
+            const votedImages: number[] = result["votedImages"];
+            const targetImageSrc: string = message.data.content.imageSrc;
+            const tabId: number = sender.tab!.id!;
+            browser.tabs.sendMessage(tabId, { action: Action.reveal_image_prompt, data: { content: { votedImages: votedImages, imageSrc: targetImageSrc } } });
+        });
+};
+
 const messageMap = new messagingMap([
     [Action.redirect, redirectTab],
     [Action.get_filters, sendFilters],
     [Action.update_blocked_images, updateBlockedImages],
-    [Action.update_report_queue, updateReportQueue],
+    [Action.update_report_queue, updateRequestQueue],
     [Action.update_voted_images, updateVotedImages],
+    [Action.make_request, makeRequest],
+    [Action.get_voted_images, sendVotedImages],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
@@ -277,7 +320,7 @@ browser.contextMenus.create({
 });
 
 browser.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === "gvp-report-image"){
+    if (info.menuItemId === "gvp-report-image") {
         browser.storage.local.get()
             .then((result) => {
                 if (info.srcUrl) {
@@ -293,7 +336,6 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                             reportCSS: resources.gvpReportCSS,
                             reportHTML: resources.gvpReportHTML,
                             base64src: info.srcUrl,
-                            reportQueue: result.reportQueue,
                         },
                     } });
                 }
@@ -315,7 +357,7 @@ let blockedSiteHTMLString: string;
 const isBlockedUrl = async (hostname: string, url: URL): Promise<filterResults> => {
     const localStorage = await browser.storage.local.get();
     const resources: HTMLResources = localStorage.documentResources;
-    if (!resources){
+    if (!resources) {
         const fallbackResponse = await fetch("https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedsite.html?ref=main", {
             headers: {
                 Authorization: `${filterToken}`,
@@ -329,7 +371,7 @@ const isBlockedUrl = async (hostname: string, url: URL): Promise<filterResults> 
     let isTemporarilyWhitelisted = false;
     const sessionWhitelistString = window.sessionStorage.getItem("whitelist");
     let sessionWhitelist: string[] = [];
-    if (sessionWhitelistString){
+    if (sessionWhitelistString) {
         const sessionWhitelistObject: whitelist = JSON.parse(sessionWhitelistString);
         sessionWhitelist = sessionWhitelistObject.whitelist;
     }
@@ -342,7 +384,7 @@ const isBlockedUrl = async (hostname: string, url: URL): Promise<filterResults> 
     console.log(`Session whitelist: ${sessionWhitelistString}`);
     console.log(`Temporarily whitelisted: ${isTemporarilyWhitelisted}`);
 
-    if (isTemporarilyWhitelisted){
+    if (isTemporarilyWhitelisted) {
         return new Promise((resolve, _) => {
             resolve({
                 "sitename": hostname,
