@@ -20,7 +20,6 @@
     "@stylistic/indent": ["error", 4],
     "@stylistic/key-spacing": "error",
     "@stylistic/keyword-spacing": "error",
-    "@stylistic/newline-per-chained-call": "warn",
     "@stylistic/no-extra-semi": "error",
     "@stylistic/no-floating-decimal": "error",
     "@stylistic/no-mixed-operators": "error",

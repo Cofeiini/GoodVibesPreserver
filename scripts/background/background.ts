@@ -305,33 +305,51 @@ const updateVotedImages = (message: browserMessage): void => {
     browser.storage.local.set({ votedImages: message.data.content.updatedVotedImages });
 };
 
+const bufferEncode = async (buffer: Uint8Array) => {
+    let base64url: string | ArrayBuffer | null = await new Promise(executor => {
+        const reader = new FileReader();
+        reader.onload = () => executor(reader.result);
+        reader.readAsDataURL(new Blob([buffer]));
+    });
+
+    if (!base64url) {
+        return "";
+    }
+
+    if (base64url instanceof ArrayBuffer) {
+        base64url = new TextDecoder("utf-8").decode(base64url);
+    }
+
+    return base64url.slice(base64url.indexOf(",") + 1);
+};
+
 const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
     const route: string = message.data.content.route;
     const requestData: reportObject | feedbackObject = message.data.content.requestData;
-    browser.storage.local.get()
-        .then(storage => {
-            const requestQueue: failedRequest[] = storage["requestQueue"];
-            encryptData(JSON.stringify(requestData))
-                .then(encryptedData => {
-                    console.log(encryptedData);
-                    fetch(`http://localhost:7070/${route}`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ data: encryptedData }),
-                    })
-                        .then(response => {
-                            console.log(`Request status: ${response.status}`);
-                        })
-                        .catch((error) => {
-                            console.log(error);
-                            browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
-                            requestQueue.push({ data: requestData, route: route });
-                            browser.storage.local.set({ requestQueue: requestQueue });
-                        });
+    console.debug(requestData);
+    browser.storage.local.get().then((storage) => {
+        const requestQueue: failedRequest[] = storage["requestQueue"];
+        encryptData(JSON.stringify(requestData)).then(encryptedData => {
+            const cipherText = new Uint8Array(encryptedData);
+            bufferEncode(cipherText).then(encodedCipher => {
+                console.log(encodedCipher);
+                fetch(`http://localhost:7070/${route}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ data: encodedCipher }),
+                }).then(response => {
+                    console.log(`Request status: ${response.status}`);
+                }).catch((error) => {
+                    console.error(error);
+                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
+                    requestQueue.push({ data: requestData, route: route });
+                    browser.storage.local.set({ requestQueue: requestQueue });
                 });
-        });
+            });
+        }).catch(error => console.error(error));
+    });
 };
 
 const sendVotedImages = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
