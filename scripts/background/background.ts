@@ -8,6 +8,54 @@ import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { v4 as uuidv4 } from "uuid";
 
+// Encryption
+
+let publicKey: CryptoKey;
+
+const stringToArrayBuffer = (str: string): ArrayBuffer => {
+    const buf = new ArrayBuffer(str.length);
+    const bufView = new Uint8Array(buf);
+    for (let i = 0, strLen = str.length; i < strLen; i++) {
+        bufView[i] = str.charCodeAt(i);
+    }
+    return buf;
+};
+
+const clearPEMFormat = (pkPEM: string): string => {
+    const removedPEM = /^-----BEGIN PUBLIC KEY-----\n(.*)\n-----END PUBLIC KEY-----/.exec(pkPEM);
+    return removedPEM!.at(1)!;
+};
+
+const getPublicKey = (): void => {
+    fetch("http://localhost:7070/publickey", {
+        method: "GET",
+    })
+        .then(response => response.json())
+        .then(async responseJSON => {
+            const publicKeyPEM = responseJSON.publicKey;
+            const publicKeyRemovedPEM: string = clearPEMFormat(publicKeyPEM);
+            const publicKeyArrayBuffer: ArrayBuffer = stringToArrayBuffer(atob(publicKeyRemovedPEM));
+            const importedPK: CryptoKey = await crypto.subtle.importKey("spki",
+                publicKeyArrayBuffer,
+                {
+                    name: "RSA-OAEP",
+                    hash: { name: "SHA-256" },
+                },
+                false,
+                ["encrypt"]
+            );
+            publicKey = importedPK;
+        });
+};
+
+getPublicKey();
+
+const encryptData = (data: string): Promise<ArrayBuffer> => {
+    return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, new TextEncoder().encode(data));
+};
+
+//
+
 const filtersUrl: string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 
 const HTMLResourcesUrls: HTMLResources = {
@@ -71,7 +119,6 @@ const fetchDatabase = () => {
                 .then(response => response.json())
                 .then(result => {
                     const imageFilters: imageFilter[] = [];
-                    console.log(result);
                     for (let i = 0; i < result.reports.length; i++) {
                         imageFilters.push({
                             source: result.reports[i].source,
@@ -264,21 +311,25 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
     browser.storage.local.get()
         .then(storage => {
             const requestQueue: failedRequest[] = storage["requestQueue"];
-            fetch(`http://localhost:7070/${route}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(requestData),
-            })
-                .then(response => {
-                    console.log(`Request status: ${response.status}`);
-                })
-                .catch((error) => {
-                    console.log(error);
-                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
-                    requestQueue.push({ data: requestData, route: route });
-                    browser.storage.local.set({ requestQueue: requestQueue });
+            encryptData(JSON.stringify(requestData))
+                .then(encryptedData => {
+                    console.log(encryptedData);
+                    fetch(`http://localhost:7070/${route}`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ data: encryptedData }),
+                    })
+                        .then(response => {
+                            console.log(`Request status: ${response.status}`);
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                            browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
+                            requestQueue.push({ data: requestData, route: route });
+                            browser.storage.local.set({ requestQueue: requestQueue });
+                        });
                 });
         });
 };
