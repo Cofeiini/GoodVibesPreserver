@@ -377,6 +377,7 @@ const checkboxesTagsId: string[] = [
     "gvp-sexualcontent-checkbox",
     "gvp-misinformation-checkbox",
     "gvp-shockingcontent-checkbox",
+    "gvp-extremism-checkbox",
 ];
 
 const makeReport = (reportData: reportObject, userReportedImages: string[]): void => {
