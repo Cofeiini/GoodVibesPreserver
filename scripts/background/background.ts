@@ -26,7 +26,10 @@ const clearPEMFormat = (pkPEM: string): string => {
     return removedPEM!.at(1)!;
 };
 
-const getPublicKey = (): void => {
+let fetchPkCalls: number = 0;
+const fetchPkBackoffBase: number = 50;
+const fetchPkBackoffCap: number = 15000;
+const fetchPublicKey = (): void => {
     fetch("http://localhost:7070/publickey", {
         method: "GET",
     })
@@ -45,13 +48,21 @@ const getPublicKey = (): void => {
                 ["encrypt"]
             );
             publicKey = importedPK;
+        })
+        .catch(err => {
+            console.error(err);
+            fetchPkCalls++;
+            const backoff = Math.min(fetchPkBackoffCap, fetchPkBackoffBase * (2 ** fetchPkCalls));
+            const jitter = Math.random();
+            const sleep = backoff * jitter;
+            console.log(`Retrying Public Key fetch, sleep: ${sleep}`);
+            setTimeout(fetchPublicKey, sleep);
         });
 };
 
-getPublicKey();
-
 const encryptData = (data: string): Promise<ArrayBuffer> => {
-    return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, new TextEncoder().encode(data));
+    const encodedData: Uint8Array = new TextEncoder().encode(data);
+    return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encodedData);
 };
 
 //
@@ -104,6 +115,9 @@ const updateWhitelist = (url: string): void => {
 
 //Local storage setup
 
+let fetchDatabaseCalls: number = 0;
+const fetchDatabaseBackoffBase: number = 100;
+const fetchDatabaseBackoffCap: number = 20000;
 const fetchDatabase = () => {
     browser.storage.local.get()
         .then((storage) => {
@@ -128,11 +142,16 @@ const fetchDatabase = () => {
                     }
                     browser.storage.local.set({ imageFilters: imageFilters });
                 })
-                .catch(err => console.error(err));
+                .catch(err => {
+                    fetchDatabaseCalls++;
+                    const backoff = Math.min(fetchDatabaseBackoffCap, fetchDatabaseBackoffBase * (2 ** fetchDatabaseCalls));
+                    const jitter = Math.random();
+                    const sleep = backoff * jitter;
+                    console.log(`Retrying Database filters fetch, sleep: ${sleep}`);
+                    setTimeout(fetchDatabase, sleep);
+                });
         });
 };
-
-fetchDatabase();
 
 const fetchResources = async (resources: HTMLResources | fallbackResources): Promise<HTMLResources | fallbackResources> => {
     const fetchedResources: HTMLResources | fallbackResources = resources;
@@ -227,15 +246,12 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
     const getDataRequest: IDBRequest = storeObject.getAll();
     getDataRequest.onsuccess = (event: Event) => {
         const data: urlFilter[] = (event.target as IDBRequest).result;
-        console.log("Asked for filters.");
         browser.storage.local.get()
             .then((result) => {
                 const documentResources: HTMLResources = result.documentResources;
                 if (!documentResources) { // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
-                    console.log("Resources are undefined");
                     fetchResources(fallbackResources)
                         .then(resources => {
-                            console.log(resources);
                             browser.tabs.sendMessage(senderId, {
                                 action: Action.send_filters,
                                 data: {
@@ -280,7 +296,6 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
 const redirectTab = (message: browserMessage, sender: browser.runtime.MessageSender) => {
     if (sender.tab?.id) {
         const targetUrl: string = message.data.content.url;
-        console.log(targetUrl);
         const urlParts = targetUrl.split("/");
         updateWhitelist(urlParts[2]); // Updates session storage whitelist so the user doesn't has to keep skipping the filter warning.
         browser.tabs.update(sender.tab.id, { url: targetUrl });
@@ -329,26 +344,32 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
     console.debug(requestData);
     browser.storage.local.get().then((storage) => {
         const requestQueue: failedRequest[] = storage["requestQueue"];
-        encryptData(JSON.stringify(requestData)).then(encryptedData => {
-            const cipherText = new Uint8Array(encryptedData);
-            bufferEncode(cipherText).then(encodedCipher => {
-                console.log(encodedCipher);
-                fetch(`http://localhost:7070/${route}`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ data: encodedCipher }),
-                }).then(response => {
-                    console.log(`Request status: ${response.status}`);
-                }).catch((error) => {
-                    console.error(error);
-                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
-                    requestQueue.push({ data: requestData, route: route });
-                    browser.storage.local.set({ requestQueue: requestQueue });
+        if (!publicKey) {
+            browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
+            requestQueue.push({ data: requestData, route: route });
+            browser.storage.local.set({ requestQueue: requestQueue });
+        }
+        encryptData(JSON.stringify(requestData))
+            .then(encryptedData => {
+                const cipherText = new Uint8Array(encryptedData);
+                bufferEncode(cipherText).then(encodedCipher => {
+                    console.log(encodedCipher);
+                    fetch(`http://localhost:7070/${route}`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ data: encodedCipher }),
+                    }).then(response => {
+                        console.log(`Request status: ${response.status}`);
+                    }).catch((error) => {
+                        console.error(error);
+                        browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
+                        requestQueue.push({ data: requestData, route: route });
+                        browser.storage.local.set({ requestQueue: requestQueue });
+                    });
                 });
-            });
-        }).catch(error => console.error(error));
+            }).catch(error => console.error(`Encryption error: ${error}`));
     });
 };
 
@@ -555,3 +576,6 @@ const handleRequest = (details: _OnBeforeRequestDetails): BlockingResponse | Pro
 };
 
 browser.webRequest.onBeforeRequest.addListener(handleRequest, { urls: ["<all_urls>"], types: ["main_frame"] }, ["blocking"]);
+
+fetchPublicKey();
+fetchDatabase();
