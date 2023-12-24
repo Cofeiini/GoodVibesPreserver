@@ -163,7 +163,7 @@ body{
 .gvp-reveal-title{
     font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
 }
-.gvp-background{
+#gvp-background{
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.800);
