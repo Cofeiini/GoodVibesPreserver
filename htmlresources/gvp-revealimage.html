@@ -1,100 +1,95 @@
-<div id="gvp-reveal-image">
-    <div>
-        <h1 class="gvp-reveal-title">Revealing Image</h1>
-    </div>
-    <div class="gvp-feedback-image-preview">
-        <img id="gvp-image-preview" src="">
-    </div>
-    <div id="gvp-user-feedback">
-        <h3>Give us feedback (optional)</h3>
-        <label></label>
-        <div id="gvp-user-feedback-section">
-            <div class="gvp-feedback-checkboxes">
-                <div class="gvp-tagbox">
-                    <label>Hate Speech</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-hatespeech" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-hatespeech" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Extremism</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-extremism" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-extremism" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Misinformation</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-misinformation" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-misinformation" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Offensive Humor</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-offensivehumor" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-offensivehumor" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Sexual Content</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-sexualcontent" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-sexualcontent" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Harassment</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-harassment" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-harassment" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Gore</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-gore" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-gore" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Drugs</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-drugs" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-drugs" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Self Harm</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-selfharm" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-selfharm" src="https://www.svgrepo.com/show/532960/minus.svg">
-                    </div>
-                </div>
-                <div class="gvp-tagbox">
-                    <label>Shocking</label>
-                    <label>0</label>
-                    <div class="gvp-checkbox">
-                        <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-shockingcontent" src="https://www.svgrepo.com/show/532994/plus.svg">
-                        <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-shockingcontent" src="https://www.svgrepo.com/show/532960/minus.svg">
+<div class="gvp-background">
+    <div id="gvp-reveal-image">
+        <div class="gvp-reveal-image-main">
+            <div class="gvp-logo-container">
+                <img id="gvp-reveal-image-logo" src="./gvpicon.png">
+            </div>
+            <div class="gvp-image-preview-section">
+                <img src="" id="gvp-image-preview">
+                <label id="gvp-image-preview-tags">tags</label>
+                <button id="gvp-reveal-preview">View image</button>
+            </div>
+            <div id="gvp-user-feedback">
+                <h4>Give us feedback (optional)</h4>
+                <div id="gvp-user-feedback-section">
+                    <div class="gvp-feedback-checkboxes">
+                        <div class="gvp-tagbox">
+                            <label>Hate Speech</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-hatespeech" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-hatespeech" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Extremism</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-extremism" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-extremism" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Misinformation</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-misinformation" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-misinformation" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Offensive Humor</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-offensivehumor" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-offensivehumor" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Sexual Content</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-sexualcontent" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-sexualcontent" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Harassment</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-harassment" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-harassment" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Gore</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-gore" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-gore" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Drugs</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-drugs" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-drugs" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Self Harm</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-selfharm" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-selfharm" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
+                        <div class="gvp-tagbox">
+                            <label>Shocking</label>
+                            <div class="gvp-checkbox">
+                                <img class="gvp-positive-checkbox" id="gvp-positive-checkbox-shockingcontent" src="https://www.svgrepo.com/show/532994/plus.svg">
+                                <img class="gvp-negative-checkbox" id="gvp-negative-checkbox-shockingcontent" src="https://www.svgrepo.com/show/532960/minus.svg">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+            <div id="gvp-reveal-submit">
+                <button id="gvp-noreveal-button">Not Reveal</button>
+                <button id="gvp-reveal-button">Reveal</button>
+            </div>
         </div>
-    </div>
-    <div id="gvp-reveal-submit">
-        <button id="gvp-noreveal-button">Not Reveal</button>
-        <button id="gvp-reveal-button">Reveal</button>
     </div>
 </div>
