@@ -167,9 +167,6 @@ const revealImagePrompt = (message: browserMessage): void => {
             const imageTags = imageTagArray.join(", ");
             document.body.appendChild(revealImageDiv);
             document.head.appendChild(revealImageStyle);
-            document.getElementById("gvp-reveal-preview")!.addEventListener("click", () => {
-                document.getElementById("gvp-image-preview")!.style.filter = "none";
-            });
             document.getElementById("gvp-image-preview-tags")!.textContent = `This image contains the next tags: ${imageTags}`;
             document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
             if (reportedByUser || votedImages.includes(reportID)) {
@@ -221,6 +218,12 @@ const revealImagePrompt = (message: browserMessage): void => {
                 if (reportID !== 0 && !reportedByUser) {
                     sendFeedback(userVotes, reportID);
                 }
+            });
+            document.getElementById("gvp-reveal-preview")!.addEventListener("click", () => {
+                document.getElementById("gvp-image-preview")!.style.filter = "none";
+            });
+            document.getElementById("gvp-close-reveal")?.addEventListener("click", () => {
+                document.getElementById("gvp-background")?.remove();
             });
         }
     });
@@ -426,7 +429,8 @@ const reportImage = (message: browserMessage): void => {
     reportDiv.innerHTML = message.data.content.reportHTML;
     document.head.appendChild(reportStyle);
     document.body.appendChild(reportDiv);
-    document.getElementById("gvp-alert")!.style.zIndex = maxZIndex.toString();
+    document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
+    (document.getElementById("gvp-report-preview-image") as HTMLImageElement)!.src = imageSource;
     const reportData: reportObject = {
         src: message.data.content.src,
         userID: message.data.content.userID,
@@ -444,7 +448,10 @@ const reportImage = (message: browserMessage): void => {
         });
     });
     document.getElementById("gvp-close-report")?.addEventListener("click", () => {
-        document.getElementById("gvp-alert")?.remove();
+        document.getElementById("gvp-background")?.remove();
+    });
+    document.getElementById("gvp-cancel-report")?.addEventListener("click", () => {
+        document.getElementById("gvp-background")?.remove();
     });
     document.getElementById("gvp-submit-button")?.addEventListener("click", () => {
         makeReport(reportData, reportedImages);
