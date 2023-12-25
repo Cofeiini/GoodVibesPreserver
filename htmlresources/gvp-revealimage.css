@@ -6,6 +6,20 @@
     left: 15px;
     top: 15px;
 }
+#gvp-close-reveal
+{
+    position: fixed;
+    right: 10px;
+    top: 10px;
+    border-radius: 20px;
+    width: 20px;
+    height: 20px;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    border: solid white 1px;
+    cursor: pointer;
+}
 .gvp-positive-checkbox{
     cursor: pointer;
     border-radius: 20px;
