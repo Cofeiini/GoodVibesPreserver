@@ -3,8 +3,8 @@
     position: fixed;
     padding: 5px;
     clip-path: circle();
-    left: 15px;
-    top: 15px;
+    left: 15;
+    top: 15;
 }
 .gvp-positive-checkbox{
     cursor: pointer;

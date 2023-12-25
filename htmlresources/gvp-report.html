@@ -1,51 +1,226 @@
-
-<div id="gvp-alert" class="gvp-alert-style">
-    <img id="gvp-close-report"src="https://www.svgrepo.com/show/433361/close-f.svg" width="20" height="20">
-    <h2 class="gvp-report-title">Reporting Image</h2>
-    <div class="gvp-report-tags">
-        <label class="gvp-tags-title">Select tags</label>
-        <div class="gvp-tags-section">
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-misinformation-checkbox">
-                <label for="gvp-misinformation-checkbox">Misinformation and Fake News</label>
+<div id="gvp-background">
+    <div id="gvp-alert" class="gvp-alert-style">
+        <img id="gvp-close-report"src="https://www.svgrepo.com/show/433361/close-f.svg" width="20" height="20">
+        <div class="gvp-logo-container">
+            <img id="gvp-logo" src="data:image/png;base64,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">
+        </div>
+        <div class="gvp-report-main-section">
+            <div class="gvp-report-preview-container">
+                <div class="gvp-report-preview-image-container">
+                    <img id="gvp-report-preview-image" src="">
+                </div>
             </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-selfharm-checkbox">
-                <label for="gvp-selfharm-checkbox">Self-harm</label>
+            <div class="gvp-report-tags-container">
+                <label class="gvp-tags-title">Select tags that are related to the image</label>
+                <div class="gvp-report-tags">
+                    <div class="gvp-tags-section">
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-misinformation-checkbox">
+                            <label for="gvp-misinformation-checkbox">Misinformation</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-selfharm-checkbox">
+                            <label for="gvp-selfharm-checkbox">Self-harm</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-harassment-checkbox">
+                            <label for="gvp-harassment-checkbox">Harassment</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-extremism-checkbox">
+                            <label for="gvp-extremism-checkbox">Extremism</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-offensivehumor-checkbox">
+                            <label for="gvp-offensivehumor-checkbox">Offensive Humor</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-hatespeech-checkbox">
+                            <label for="gvp-hatespeech-checkbox">Hate Speech</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-gore-checkbox">
+                            <label for="gvp-gore-checkbox">Gore</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-drugs-checkbox">
+                            <label for="gvp-drugs-checkbox">Drugs</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-sexualcontent-checkbox">
+                            <label for="gvp-sexualcontent-checkbox">Sexual Content</label>
+                        </div>
+                        <div class="gvp-tag-container">
+                            <input type="checkbox" class="gvp-checkbox" id="gvp-shockingcontent-checkbox">
+                            <label for="gvp-shockingcontent-checkbox">Shocking</label>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-harassment-checkbox">
-                <label for="gvp-harassment-checkbox">Harassment</label>
-            </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-extremism-checkbox">
-                <label for="gvp-extremism-checkbox">Cults and Extremist Groups</label>
-            </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-offensivehumor-checkbox">
-                <label for="gvp-offensivehumor-checkbox">Offensive Humor</label>
-            </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-hatespeech-checkbox">
-                <label for="gvp-hatespeech-checkbox">Hate Speech</label>
-            </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-gore-checkbox">
-                <label for="gvp-gore-checkbox">Gore</label>
-            </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-drugs-checkbox">
-                <label for="gvp-drugs-checkbox">Drugs</label>
-            </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-sexualcontent-checkbox">
-                <label for="gvp-sexualcontent-checkbox">Sexual Content</label>
-            </div>
-            <div class="gvp-tag">
-                <input type="checkbox" class="gvp-checkbox" id="gvp-shockingcontent-checkbox">
-                <label for="gvp-shockingcontent-checkbox">Shocking</label>
+            <div class="gvp-report-submit">
+                <button id="gvp-cancel-report">Cancel</button>
+                <button id="gvp-submit-button">Submit Report</button>
             </div>
         </div>
     </div>
-    <button id="gvp-submit-button">Submit Report</button>
 </div>
+
+<style>
+
+.gvp-logo-container{
+    background-color: rgb(29, 29, 29);
+    position: fixed;
+    padding: 5px;
+    clip-path: circle();
+    left: 15;
+    top: 15;
+}
+
+#gvp-report-preview-image{
+    max-width: 300px;
+    max-height: 175px;
+    object-fit: contain;
+    border-radius: 5px;
+}
+
+.gvp-report-preview-image-container{
+    padding: 10px;
+    border: solid 1px grey;
+    border-radius: 5px;
+}
+
+.gvp-report-preview-container{
+    box-shadow: 0 0 5px rgb(20, 20, 20);
+    justify-content: center;
+    display: flex;
+    background-color: rgb(48, 48, 48);
+    width: 90%;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.gvp-tag-container
+{
+    color: rgb(0, 0, 0);
+    background-color: rgb(245, 245, 245);
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.500);
+}
+
+.gvp-report-submit
+{
+    display: flex;
+    justify-content: space-around;
+    gap: 50px;
+    width: 90%;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.gvp-report-submit button
+{
+    width: 114px;
+    padding: 13px;
+    border-radius: 8px;
+    border: solid 1px rgb(255, 255, 255);
+    background-color: rgba(0, 0, 0, 0);
+    color: white;
+    cursor: pointer;
+}
+.gvp-report-submit button:hover{
+    background-color: rgb(70, 70, 70);
+}
+
+#gvp-close-report
+{
+    position: fixed;
+    right: 10px;
+    top: 10px;
+    border-radius: 20px;
+    font-weight: bold;
+    border: solid black 1px;
+    width: 20px;
+    height: 20px;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    border: solid white 1px;
+    cursor: pointer;
+}
+.gvp-tags-title
+{
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    color: white;
+}
+.gvp-report-tags
+{
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    border-radius: 10px;
+    padding: 10px;
+}
+.gvp-report-tags-container{
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 5px rgb(20, 20, 20);
+    align-items: center;
+    background-color: rgb(48, 48, 48);
+    width: 95%;
+    border-radius: 10px;
+    padding: 10px;
+}
+.gvp-tags-section
+{
+    font-family: Arial, Helvetica, sans-serif;
+    display: grid;
+    grid-template-columns: repeat(2,50%);
+    padding: 20px;
+    align-items: center;
+    justify-content: center;
+    height: 100px;
+    gap: 10px;
+    background-color: rgb(189, 189, 189);
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.781);
+    overflow-y: scroll;
+    overflow-x: hidden;
+    border-radius: 10px;
+    border: 1px solid white;
+}
+.gvp-report-main-section{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background-color: rgb(34, 34, 34);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 5px black;
+}
+.gvp-alert-style
+{
+    position: fixed;
+    top: 5%;
+    width: 450px;
+    left: 50%;
+    transform: translate(-50%);
+    background-color: rgb(41, 41, 41);
+    border-radius: 10px;
+    box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.452);
+    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+    user-select: none;
+    padding: 20px;
+}
+#gvp-background{
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0px;
+    background-color: rgba(0, 0, 0, 0.800);
+}
+</style>
