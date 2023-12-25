@@ -125,7 +125,6 @@ const fetchDatabase = () => {
             if (!userID) {
                 userID = uuidv4();
                 browser.storage.local.set({ userID: userID });
-                console.log(`User ID getfilters; ${userID}`);
             }
             fetch(`http://localhost:7070/getimagefilters?userid=${userID}`, {
                 method: "GET",
@@ -143,11 +142,11 @@ const fetchDatabase = () => {
                     browser.storage.local.set({ imageFilters: imageFilters });
                 })
                 .catch(err => {
+                    console.error(err);
                     fetchDatabaseCalls++;
                     const backoff = Math.min(fetchDatabaseBackoffCap, fetchDatabaseBackoffBase * (2 ** fetchDatabaseCalls));
                     const jitter = Math.random();
                     const sleep = backoff * jitter;
-                    console.log(`Retrying Database filters fetch, sleep: ${sleep}`);
                     setTimeout(fetchDatabase, sleep);
                 });
         });
@@ -240,7 +239,7 @@ dbRequest.onerror = (event) => {
 //Messaging system
 
 const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSender) => {
-    const senderId = sender.tab?.id || 0;
+    const senderId = sender.tab!.id!;
     const transaction: IDBTransaction = filters_database.transaction(["filterList"], "readonly");
     const storeObject: IDBObjectStore = transaction.objectStore("filterList");
     const getDataRequest: IDBRequest = storeObject.getAll();
@@ -405,7 +404,7 @@ browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.
 
 browser.contextMenus.create({
     id: "gvp-report-image",
-    title: "Report & Block Image",
+    title: "Report Image",
     contexts: ["image"],
 });
 

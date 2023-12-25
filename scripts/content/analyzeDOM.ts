@@ -73,6 +73,7 @@ let blockedElementsCounter = 0;
  * @param element represents the element that the function will analyze its dimensions.
  * @returns { boolean } for telling whether the warning sign should be the default or smaller one.
  */
+
 const analyzeElement = (element: Element): string => {
     const elementHTML: HTMLElement = (element as HTMLElement);
     if (elementHTML.offsetWidth <= 134 || elementHTML.offsetHeight <= 52) {
@@ -156,9 +157,21 @@ const revealImagePrompt = (message: browserMessage): void => {
             const reportID: number | null = Number(targetImage.getAttribute("gvp-report-id"));
             const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
             const reportedByUser: boolean = reportedImages.includes(imageSource);
+            const tagsObject = JSON.parse(image.tags);
+            const imageTagArray: string[] = [];
+            for (const key of Object.keys(tagsObject)) {
+                if (tagsObject[key] > 0) {
+                    imageTagArray.push(key);
+                }
+            }
+            const imageTags = imageTagArray.join(", ");
             document.body.appendChild(revealImageDiv);
             document.head.appendChild(revealImageStyle);
-            document.getElementById("gvp-reveal-image")!.style.zIndex = maxZIndex.toString();
+            document.getElementById("gvp-reveal-preview")!.addEventListener("click", () => {
+                document.getElementById("gvp-image-preview")!.style.filter = "none";
+            });
+            document.getElementById("gvp-image-preview-tags")!.textContent = `This image contains the next tags: ${imageTags}`;
+            document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
             if (reportedByUser || votedImages.includes(reportID)) {
                 document.getElementById("gvp-user-feedback")?.remove();
             }
@@ -193,7 +206,7 @@ const revealImagePrompt = (message: browserMessage): void => {
             });
 
             document.getElementById("gvp-noreveal-button")?.addEventListener("click", () => {
-                document.getElementById("gvp-reveal-image")?.remove();
+                document.getElementById("gvp-background")?.remove();
                 if (reportID !== 0 && !reportedByUser) {
                     sendFeedback(userVotes, reportID);
                 }
@@ -202,7 +215,7 @@ const revealImagePrompt = (message: browserMessage): void => {
                 document.querySelectorAll(`img[src="${message.data.content.imageSrc}"]`).forEach(img => {
                     (img as HTMLImageElement).src = image.blockedSource;
                 });
-                document.getElementById("gvp-reveal-image")?.remove();
+                document.getElementById("gvp-background")?.remove();
                 skippedSources.add(image.blockedSource);
                 targetImage.removeEventListener("click", revealImage);
                 if (reportID !== 0 && !reportedByUser) {
@@ -404,8 +417,7 @@ const reportImage = (message: browserMessage): void => {
         makeNotification("This image has been reported already.");
         return;
     }
-    if (document.getElementById("gvp-alert")) {
-        makeNotification("Cannot make multiple reports at the same time.");
+    if (document.getElementById("gvp-alert") || document.getElementById("gvp-reveal-image")) {
         return;
     }
     const reportDiv: HTMLDivElement = document.createElement("div");
