@@ -1,15 +1,66 @@
-.gvp-tag
-{
-    color: white;
+.gvp-logo-container{
+    background-color: rgb(29, 29, 29);
+    position: fixed;
+    padding: 5px;
+    clip-path: circle();
+    left: 15px;
+    top: 15px;
 }
 
-#gvp-submit-button
-{
+#gvp-report-preview-image{
+    max-width: 300px;
+    max-height: 175px;
+    object-fit: contain;
+    border-radius: 5px;
+}
+
+.gvp-report-preview-image-container{
     padding: 10px;
-    border-radius: 35px;
-    border: none;
-    box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.301);
+    border: solid 1px grey;
+    border-radius: 5px;
+}
+
+.gvp-report-preview-container{
+    box-shadow: 0 0 5px rgb(20, 20, 20);
+    justify-content: center;
+    display: flex;
+    background-color: rgb(48, 48, 48);
+    width: 90%;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.gvp-tag-container
+{
+    color: rgb(0, 0, 0);
+    background-color: rgb(245, 245, 245);
+    border-radius: 10px;
+    padding: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.500);
+}
+
+.gvp-report-submit
+{
+    display: flex;
+    justify-content: space-around;
+    gap: 50px;
+    width: 90%;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.gvp-report-submit button
+{
+    width: 114px;
+    padding: 13px;
+    border-radius: 8px;
+    border: solid 1px rgb(255, 255, 255);
+    background-color: rgba(0, 0, 0, 0);
+    color: white;
     cursor: pointer;
+}
+.gvp-report-submit button:hover{
+    background-color: rgb(70, 70, 70);
 }
 
 #gvp-close-report
@@ -28,14 +79,11 @@
     border: solid white 1px;
     cursor: pointer;
 }
-.gvp-report-title
-{
-    font-family: Arial, Helvetica, sans-serif;
-}
 .gvp-tags-title
 {
     font-family: Arial, Helvetica, sans-serif;
     font-weight: bold;
+    color: white;
 }
 .gvp-report-tags
 {
@@ -43,8 +91,18 @@
     flex-direction: column;
     text-align: center;
     border-radius: 10px;
-    padding: 20px;
-}    
+    padding: 10px;
+}
+.gvp-report-tags-container{
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 5px rgb(20, 20, 20);
+    align-items: center;
+    background-color: rgb(48, 48, 48);
+    width: 95%;
+    border-radius: 10px;
+    padding: 10px;
+}
 .gvp-tags-section
 {
     font-family: Arial, Helvetica, sans-serif;
@@ -52,27 +110,47 @@
     grid-template-columns: repeat(2,50%);
     padding: 20px;
     align-items: center;
+    justify-content: center;
     height: 100px;
     gap: 10px;
+    background-color: rgb(189, 189, 189);
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.781);
     overflow-y: scroll;
     overflow-x: hidden;
-    background-color: rgb(180, 180, 180);
-    border-radius: 5px;
-    box-shadow: inset 0 0 1px 1px black
+    border-radius: 10px;
+    border: 1px solid white;
+}
+.gvp-report-main-section{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background-color: rgb(34, 34, 34);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 5px black;
 }
 .gvp-alert-style
 {
     position: fixed;
-    top: 20%;
+    top: 5%;
     width: 450px;
-    height: 340px;
     left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(196, 196, 196, 0.712);
-    display: flex;
-    border-radius: 5px;
+    transform: translate(-50%);
+    background-color: rgb(41, 41, 41);
+    border-radius: 10px;
     box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.452);
     align-items: center;
     flex-direction: column;
     gap: 10px;
+    user-select: none;
+    padding: 20px;
+}
+#gvp-background{
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0px;
+    background-color: rgba(0, 0, 0, 0.800);
 }
