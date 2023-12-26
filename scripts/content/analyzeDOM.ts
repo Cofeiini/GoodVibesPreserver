@@ -409,7 +409,7 @@ const makeReport = (reportData: reportObject, userReportedImages: string[]): voi
 
     reportData.tags = selectedTags;
     sendData(reportData, "report");
-    document.getElementById("gvp-alert")?.remove();
+    document.getElementById("gvp-background")?.remove();
 };
 
 const reportImage = (message: browserMessage): void => {
