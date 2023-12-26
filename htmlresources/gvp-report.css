@@ -1,10 +1,8 @@
 .gvp-logo-container{
-    background-color: rgb(29, 29, 29);
     position: fixed;
     padding: 5px;
-    clip-path: circle();
-    left: 15px;
-    top: 15px;
+    top: -10px;
+    transform: translate('50%');
 }
 
 #gvp-report-preview-image{
@@ -16,7 +14,7 @@
 
 .gvp-report-preview-image-container{
     padding: 10px;
-    border: solid 1px grey;
+    border: solid 1px rgb(255, 255, 255);
     border-radius: 5px;
 }
 
@@ -24,7 +22,7 @@
     box-shadow: 0 0 5px rgb(20, 20, 20);
     justify-content: center;
     display: flex;
-    background-color: rgb(48, 48, 48);
+    background-color: rgb(34, 34, 34);
     width: 90%;
     border-radius: 10px;
     padding: 20px;
@@ -34,33 +32,46 @@
 {
     color: rgb(0, 0, 0);
     background-color: rgb(245, 245, 245);
-    border-radius: 10px;
+    border-radius: 30px;
     padding: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.500);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.500);
+}
+.gvp-tag-container label, .gvp-tag-container input{
+    cursor: pointer;
 }
 
 .gvp-report-submit
 {
     display: flex;
-    justify-content: space-around;
-    gap: 50px;
+    justify-content: center;
     width: 90%;
     border-radius: 10px;
     padding: 20px;
 }
 
+#gvp-cancel-report{
+    border-bottom-left-radius: 30px;
+    border-top-left-radius: 30px;
+}
+
+#gvp-submit-button{
+    border-bottom-right-radius: 30px;
+    border-top-right-radius: 30px;
+}
+
 .gvp-report-submit button
 {
-    width: 114px;
+    width: 200px;
     padding: 13px;
-    border-radius: 8px;
     border: solid 1px rgb(255, 255, 255);
     background-color: rgba(0, 0, 0, 0);
     color: white;
     cursor: pointer;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.700);
 }
 .gvp-report-submit button:hover{
     background-color: rgb(70, 70, 70);
+    font-weight: bold;
 }
 
 #gvp-close-report
@@ -90,13 +101,14 @@
     text-align: center;
     border-radius: 10px;
     padding: 10px;
+    font-weight: bold;
 }
 .gvp-report-tags-container{
     display: flex;
     flex-direction: column;
     box-shadow: 0 0 5px rgb(20, 20, 20);
     align-items: center;
-    background-color: rgb(48, 48, 48);
+    background-color: rgb(34, 34, 34);
     width: 95%;
     border-radius: 10px;
     padding: 10px;
@@ -111,7 +123,7 @@
     justify-content: center;
     height: 100px;
     gap: 10px;
-    background-color: rgb(189, 189, 189);
+    background-color: rgb(41, 41, 41);
     box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.781);
     overflow-y: scroll;
     overflow-x: hidden;
@@ -126,6 +138,7 @@
     gap: 20px;
     background-color: rgb(34, 34, 34);
     padding: 30px;
+    width: 85%;
     border-radius: 10px;
     box-shadow: 0 0 5px black;
 }
@@ -138,7 +151,9 @@
     transform: translate(-50%);
     background-color: rgb(41, 41, 41);
     border-radius: 10px;
-    box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.452);
+    box-shadow: 0 0 10px rgb(0, 0, 0);
+    justify-content: center;
+    display: flex;
     align-items: center;
     flex-direction: column;
     gap: 10px;
