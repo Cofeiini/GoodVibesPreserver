@@ -1,5 +1,5 @@
 import SparkMD5 from "spark-md5";
-import { urlFilter, reportObject, imageFilter, tagCheckboxes, feedbackObject, failedRequest } from "../tools/interfaces";
+import { urlFilter, reportObject, imageFilter, tagCheckboxes, feedbackObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import { Optional } from "../tools/optional";
 
