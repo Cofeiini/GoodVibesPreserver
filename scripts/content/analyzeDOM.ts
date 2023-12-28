@@ -141,12 +141,11 @@ const revealImage = (event: Event): void => {
 };
 
 const revealImagePrompt = (message: browserMessage): void => {
-    const targetImage: HTMLElement = document.querySelector(`img[src="${message.data.content.imageSrc}"]`)!;
-    votedImages = message.data.content.votedImages;
     if (document.getElementById("gvp-reveal-image")) {
-        makeNotification("Cannot reveal multiple images at the same time");
         return;
     }
+    const targetImage: HTMLElement = document.querySelector(`img[src="${message.data.content.imageSrc}"]`)!;
+    votedImages = message.data.content.votedImages;
     const revealImageDiv: HTMLDivElement = document.createElement("div");
     const revealImageStyle: HTMLStyleElement = document.createElement("style");
     revealImageDiv.innerHTML = revealImageHTMLString;
@@ -154,7 +153,7 @@ const revealImagePrompt = (message: browserMessage): void => {
     const recoverID = Number(targetImage.getAttribute("src-identifier"));
     blockedImagesSet.forEach(image => {
         if (image.recoverID === recoverID) {
-            const reportID: number | null = Number(targetImage.getAttribute("gvp-report-id"));
+            const reportID: number = Number(targetImage.getAttribute("gvp-report-id"));
             const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
             const reportedByUser: boolean = reportedImages.includes(imageSource);
             const tagsObject = JSON.parse(image.tags);
@@ -254,31 +253,33 @@ const generateFilteredImage = (width: number, height: number): string => {
 };
 
 const filterImage = (image: HTMLImageElement): void => {
-    if (!image.getAttribute("src-identifier") && image.id !== "gvp-image-preview") {
-        const imageWidth = image.naturalWidth;
-        const imageHeight = image.naturalHeight;
-        const imageSource: string = (/^data/.test(image.src) ? SparkMD5.hash(image.src) : image.src);
-        let isInFilters: boolean = false;
-        let imageTags: string = "";
-        let reportID: number = 0;
-        if (imageFilters) {
-            isInFilters = imageFilters.some(filter => filter.source === imageSource);
-            imageFilters.forEach(img => {
-                if (img.source === imageSource) {
-                    imageTags = img.tags;
-                    reportID = img.id;
-                }
-            });
+    if (image.getAttribute("src-identifier") || image.id === "gvp-image-preview") {
+        return;
+    }
+    const imageWidth = image.naturalWidth;
+    const imageHeight = image.naturalHeight;
+    const imageSource: string = (/^data/.test(image.src) ? SparkMD5.hash(image.src) : image.src);
+    let isInFilters: boolean = false;
+    let imageTags: string = "";
+    let reportID: number = 0;
+    if (imageFilters) {
+        isInFilters = imageFilters.some(filter => filter.source === imageSource);
+        for (const img of imageFilters) {
+            if (img.source === imageSource) {
+                imageTags = img.tags;
+                reportID = img.id;
+                break;
+            }
         }
-        if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (reportedImages.includes(imageSource) || isInFilters)) {
-            const filteredImage = generateFilteredImage(imageWidth, imageHeight);
-            blockedImagesCounter++;
-            blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
-            image.setAttribute("src-identifier", `${blockedImagesCounter}`);
-            image.setAttribute("gvp-report-id", `${reportID}`);
-            image.src = filteredImage;
-            image.addEventListener("click", revealImage);
-        }
+    }
+    if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (reportedImages.includes(imageSource) || isInFilters)) {
+        const filteredImage = generateFilteredImage(imageWidth, imageHeight);
+        blockedImagesCounter++;
+        blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
+        image.setAttribute("src-identifier", `${blockedImagesCounter}`);
+        image.setAttribute("gvp-report-id", `${reportID}`);
+        image.src = filteredImage;
+        image.addEventListener("click", revealImage);
     }
 };
 
@@ -416,7 +417,8 @@ const reportImage = (message: browserMessage): void => {
     const imageSource: string = message.data.content.base64src;
     const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${imageSource}"]`);
     reportedImages = message.data.content.reportedImages;
-    if (reportedImage?.getAttribute("src-identifier") || reportedImages.includes((/^data/.test(imageSource) ? SparkMD5.hash(imageSource) : imageSource))) {
+    const base64regEx: RegExp = /^data/;
+    if (reportedImage?.getAttribute("src-identifier") || reportedImages.includes((base64regEx.test(imageSource) ? SparkMD5.hash(imageSource) : imageSource))) {
         makeNotification("This image has been reported already.");
         return;
     }
