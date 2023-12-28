@@ -14,6 +14,12 @@
     },
     "default_popup": "popup/popup.html"
   },
+  
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "goodvibespreserver@github.com"
+    }
+  },
 
   "permissions": [
     "<all_urls>",

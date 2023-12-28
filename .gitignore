@@ -143,3 +143,6 @@ scripts/tools/token.ts
 
 # Bun files
 *.lockb
+
+# Extension builds
+web-ext-artifacts/

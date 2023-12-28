@@ -1,7 +1,47 @@
-export interface urlFilter
-{
+export interface urlFilter {
     pattern: RegExp,
     tags: string[],
+}
+
+export type imageFilter = {
+    source: string,
+    tags: string,
+    id: number,
+};
+
+export class feedbackObject {
+    [key: string]: number;
+    reportID = 0;
+    hatespeech = 0;
+    extremism = 0;
+    misinformation = 0;
+    offensivehumor = 0;
+    sexualcontent = 0;
+    harassment = 0;
+    gore = 0;
+    drugs = 0;
+    selfharm = 0;
+    shockingcontent = 0;
+}
+
+export class tagInnerStructure {
+    checkedNegative = false;
+    checkedPositive = false;
+    tagValue = 0;
+}
+
+export class tagCheckboxes {
+    [key: string]: tagInnerStructure;
+    hatespeech = new tagInnerStructure();
+    extremism = new tagInnerStructure();
+    misinformation = new tagInnerStructure();
+    offensivehumor = new tagInnerStructure();
+    sexualcontent = new tagInnerStructure();
+    harassment = new tagInnerStructure();
+    gore = new tagInnerStructure();
+    drugs = new tagInnerStructure();
+    selfharm = new tagInnerStructure();
+    shockingcontent = new tagInnerStructure();
 }
 
 export type HTMLResources = {
@@ -13,6 +53,8 @@ export type HTMLResources = {
     gvpReportCSS: string,
     gvpNotificationHTML: string,
     gvpNotificationCSS: string,
+    gvpRevealImageHTML: string,
+    gvpRevealImageCSS: string,
 };
 
 export type fallbackResources = {
@@ -21,10 +63,11 @@ export type fallbackResources = {
     blockedElementSmallHTML: string,
     gvpNotificationCSS: string,
     gvpNotificationHTML: string,
+    gvpRevealImageHTML: string,
+    gvpRevealImageCSS: string,
 };
 
-export interface filterResults
-{
+export interface filterResults {
     url: URL,
     sitename: string,
     tags: string[],
@@ -54,4 +97,9 @@ export type reportObject = {
     userID: string,
     tags: string[],
     timeStamp: string,
+};
+
+export type failedRequest = {
+    data: feedbackObject | reportObject,
+    route: string,
 };

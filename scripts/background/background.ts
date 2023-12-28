@@ -2,11 +2,70 @@ import _OnBeforeRequestDetails = browser.webRequest._OnBeforeRequestDetails;
 import BlockingResponse = browser.webRequest.BlockingResponse;
 import _StreamFilterOndataEvent = browser.webRequest._StreamFilterOndataEvent;
 import { filterToken } from "../tools/token";
-import { urlFilter, githubResponse, filterResults, reportObject, HTMLResources, fallbackResources } from "../tools/interfaces";
+import { urlFilter, githubResponse, filterResults, reportObject, HTMLResources, fallbackResources, imageFilter, failedRequest, feedbackObject } from "../tools/interfaces";
 import { Optional } from "../tools/optional";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { v4 as uuidv4 } from "uuid";
+
+// Encryption
+
+let publicKey: CryptoKey;
+
+const stringToArrayBuffer = (str: string): ArrayBuffer => {
+    const buf = new ArrayBuffer(str.length);
+    const bufView = new Uint8Array(buf);
+    for (let i = 0, strLen = str.length; i < strLen; i++) {
+        bufView[i] = str.charCodeAt(i);
+    }
+    return buf;
+};
+
+const clearPEMFormat = (pkPEM: string): string => {
+    const removedPEM = /^-----BEGIN PUBLIC KEY-----\n(.*)\n-----END PUBLIC KEY-----/.exec(pkPEM);
+    return removedPEM!.at(1)!;
+};
+
+let fetchPkCalls: number = 0;
+const fetchPkBackoffBase: number = 50;
+const fetchPkBackoffCap: number = 15000;
+const fetchPublicKey = (): void => {
+    fetch("http://localhost:7070/publickey", {
+        method: "GET",
+    })
+        .then(response => response.json())
+        .then(async responseJSON => {
+            const publicKeyPEM = responseJSON.publicKey;
+            const publicKeyRemovedPEM: string = clearPEMFormat(publicKeyPEM);
+            const publicKeyArrayBuffer: ArrayBuffer = stringToArrayBuffer(atob(publicKeyRemovedPEM));
+            const importedPK: CryptoKey = await crypto.subtle.importKey("spki",
+                publicKeyArrayBuffer,
+                {
+                    name: "RSA-OAEP",
+                    hash: { name: "SHA-256" },
+                },
+                false,
+                ["encrypt"]
+            );
+            publicKey = importedPK;
+        })
+        .catch(err => {
+            console.error(err);
+            fetchPkCalls++;
+            const backoff = Math.min(fetchPkBackoffCap, fetchPkBackoffBase * (2 ** fetchPkCalls));
+            const jitter = Math.random();
+            const sleep = backoff * jitter;
+            console.log(`Retrying Public Key fetch, sleep: ${sleep}`);
+            setTimeout(fetchPublicKey, sleep);
+        });
+};
+
+const encryptData = (data: string): Promise<ArrayBuffer> => {
+    const encodedData: Uint8Array = new TextEncoder().encode(data);
+    return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encodedData);
+};
+
+//
 
 const filtersUrl: string = "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/filters.json?ref=main";
 
@@ -18,6 +77,8 @@ const HTMLResourcesUrls: HTMLResources = {
     gvpReportCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.css?ref=main",
     gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
     gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
+    gvpRevealImageHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.html?ref=main",
+    gvpRevealImageCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.css?ref=main",
 };
 
 const fallbackResources: fallbackResources = {
@@ -25,6 +86,8 @@ const fallbackResources: fallbackResources = {
     blockedElementSmallHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedelementsmall.html?ref=main",
     gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
     gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
+    gvpRevealImageHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.html?ref=main",
+    gvpRevealImageCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.css?ref=main",
 };
 
 // Session whitelist
@@ -36,12 +99,12 @@ type whitelist = {
 const updateWhitelist = (url: string): void => {
     const whitelistString = window.sessionStorage.getItem("whitelist");
     let whitelistArray: string[] = [];
-    if (whitelistString){ // Checks for URLs already temporarily stored, if not it just creates a new whitelist with the current URL being whitelisted.
+    if (whitelistString) { // Checks for URLs already temporarily stored, if not it just creates a new whitelist with the current URL being whitelisted.
         const whitelistObject: whitelist = JSON.parse(whitelistString);
         whitelistArray = whitelistObject.whitelist;
     }
 
-    if (!whitelistArray.includes(url)){
+    if (!whitelistArray.includes(url)) {
         whitelistArray.push(url);
     }
 
@@ -52,9 +115,46 @@ const updateWhitelist = (url: string): void => {
 
 //Local storage setup
 
+let fetchDatabaseCalls: number = 0;
+const fetchDatabaseBackoffBase: number = 100;
+const fetchDatabaseBackoffCap: number = 20000;
+const fetchDatabase = () => {
+    browser.storage.local.get()
+        .then((storage) => {
+            let userID = storage.userID;
+            if (!userID) {
+                userID = uuidv4();
+                browser.storage.local.set({ userID: userID });
+            }
+            fetch(`http://localhost:7070/getimagefilters?userid=${userID}`, {
+                method: "GET",
+            })
+                .then(response => response.json())
+                .then(result => {
+                    const imageFilters: imageFilter[] = [];
+                    for (let i = 0; i < result.reports.length; i++) {
+                        imageFilters.push({
+                            source: result.reports[i].source,
+                            tags: result.reports[i].tags,
+                            id: result.reports[i].id,
+                        });
+                    }
+                    browser.storage.local.set({ imageFilters: imageFilters });
+                })
+                .catch(err => {
+                    console.error(err);
+                    fetchDatabaseCalls++;
+                    const backoff = Math.min(fetchDatabaseBackoffCap, fetchDatabaseBackoffBase * (2 ** fetchDatabaseCalls));
+                    const jitter = Math.random();
+                    const sleep = backoff * jitter;
+                    setTimeout(fetchDatabase, sleep);
+                });
+        });
+};
+
 const fetchResources = async (resources: HTMLResources | fallbackResources): Promise<HTMLResources | fallbackResources> => {
     const fetchedResources: HTMLResources | fallbackResources = resources;
-    for (const [key, value] of Object.entries(resources)){
+    for (const [key, value] of Object.entries(resources)) {
         const response = await fetch(value, {
             headers: {
                 Authorization: `${filterToken}`,
@@ -80,11 +180,19 @@ browser.runtime.onInstalled.addListener(() => {
                     blockedElementSmallHTML: fetchedHTMLResources.blockedElementSmallHTML,
                     gvpNotificationHTML: fetchedHTMLResources.gvpNotificationHTML,
                     gvpNotificationCSS: fetchedHTMLResources.gvpNotificationCSS,
+                    gvpRevealImageHTML: fetchedHTMLResources.gvpRevealImageHTML,
+                    gvpRevealImageCSS: fetchedHTMLResources.gvpRevealImageCSS,
                 },
                 reportedImages: [] as string[],
-                reportQueue: [] as reportObject[],
-                userID: uuidv4(),
+                requestQueue: [] as failedRequest[],
+                votedImages: [] as number[],
             });
+            browser.storage.local.get("userID")
+                .then(result => {
+                    if (!result.userID) {
+                        browser.storage.local.set({ userID: uuidv4() });
+                    }
+                });
         });
 });
 
@@ -131,21 +239,18 @@ dbRequest.onerror = (event) => {
 //Messaging system
 
 const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSender) => {
-    const senderId = sender.tab?.id || 0;
+    const senderId = sender.tab!.id!;
     const transaction: IDBTransaction = filters_database.transaction(["filterList"], "readonly");
     const storeObject: IDBObjectStore = transaction.objectStore("filterList");
     const getDataRequest: IDBRequest = storeObject.getAll();
     getDataRequest.onsuccess = (event: Event) => {
         const data: urlFilter[] = (event.target as IDBRequest).result;
-        console.log("Asked for filters.");
         browser.storage.local.get()
             .then((result) => {
                 const documentResources: HTMLResources = result.documentResources;
-                if (!documentResources){ // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
-                    console.log("Resources are undefined");
+                if (!documentResources) { // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
                     fetchResources(fallbackResources)
                         .then(resources => {
-                            console.log(resources);
                             browser.tabs.sendMessage(senderId, {
                                 action: Action.send_filters,
                                 data: {
@@ -155,6 +260,10 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
                                         blockedSignSmall: resources.blockedElementSmallHTML,
                                         notificationCSSString: resources.gvpNotificationCSS,
                                         notificationHTMLString: resources.gvpNotificationHTML,
+                                        gvpRevealImageHTML: resources.gvpRevealImageHTML,
+                                        gvpRevealImageCSS: resources.gvpRevealImageCSS,
+                                        imageFilters: result.imageFilters,
+                                        votedImages: [],
                                         reportedImages: [],
                                     },
                                 },
@@ -171,6 +280,10 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
                             blockedSignSmall: documentResources.blockedElementSmallHTML,
                             notificationCSSString: documentResources.gvpNotificationCSS,
                             notificationHTMLString: documentResources.gvpNotificationHTML,
+                            gvpRevealImageHTML: documentResources.gvpRevealImageHTML,
+                            gvpRevealImageCSS: documentResources.gvpRevealImageCSS,
+                            imageFilters: result.imageFilters,
+                            votedImages: result.votedImages,
                             reportedImages: result.reportedImages,
                         },
                     },
@@ -179,31 +292,104 @@ const sendFilters = (message: browserMessage, sender: browser.runtime.MessageSen
     };
 };
 
-const updateReportQueue = (message: browserMessage): void => {
-    const updatedReportQueue: reportObject[] = message.data.content.reportQueue;
-    console.log(`Report queue: ${updatedReportQueue}`);
-    browser.storage.local.set({ reportQueue: updatedReportQueue });
-};
-
 const redirectTab = (message: browserMessage, sender: browser.runtime.MessageSender) => {
-    if (sender.tab?.id){
+    if (sender.tab?.id) {
         const targetUrl: string = message.data.content.url;
-        console.log(targetUrl);
         const urlParts = targetUrl.split("/");
         updateWhitelist(urlParts[2]); // Updates session storage whitelist so the user doesn't has to keep skipping the filter warning.
         browser.tabs.update(sender.tab.id, { url: targetUrl });
     }
 };
 
+const updateRequestQueue = async (message: browserMessage): Promise<void> => {
+    const storageQueue = await browser.storage.local.get("requestQueue");
+    const requestQueue = storageQueue["requestQueue"];
+    const tabQueue: failedRequest[] = message.data.content.requestQueue;
+    tabQueue.forEach(request => {
+        requestQueue.push(request);
+    });
+    browser.storage.local.set({ requestQueue: requestQueue });
+};
+
 const updateBlockedImages = (message: browserMessage): void => {
     browser.storage.local.set({ reportedImages: message.data.content.updatedBlockedImages });
+};
+
+const updateVotedImages = (message: browserMessage): void => {
+    browser.storage.local.set({ votedImages: message.data.content.updatedVotedImages });
+};
+
+const bufferEncode = async (buffer: Uint8Array) => {
+    let base64url: string | ArrayBuffer | null = await new Promise(executor => {
+        const reader = new FileReader();
+        reader.onload = () => executor(reader.result);
+        reader.readAsDataURL(new Blob([buffer]));
+    });
+
+    if (!base64url) {
+        return "";
+    }
+
+    if (base64url instanceof ArrayBuffer) {
+        base64url = new TextDecoder("utf-8").decode(base64url);
+    }
+
+    return base64url.slice(base64url.indexOf(",") + 1);
+};
+
+const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
+    const route: string = message.data.content.route;
+    const requestData: reportObject | feedbackObject = message.data.content.requestData;
+    console.debug(requestData);
+    browser.storage.local.get().then((storage) => {
+        const requestQueue: failedRequest[] = storage["requestQueue"];
+        if (!publicKey) {
+            browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
+            requestQueue.push({ data: requestData, route: route });
+            browser.storage.local.set({ requestQueue: requestQueue });
+        }
+        encryptData(JSON.stringify(requestData))
+            .then(encryptedData => {
+                const cipherText = new Uint8Array(encryptedData);
+                bufferEncode(cipherText).then(encodedCipher => {
+                    console.log(encodedCipher);
+                    fetch(`http://localhost:7070/${route}`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ data: encodedCipher }),
+                    }).then(response => {
+                        console.log(`Request status: ${response.status}`);
+                    }).catch((error) => {
+                        console.error(error);
+                        browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
+                        requestQueue.push({ data: requestData, route: route });
+                        browser.storage.local.set({ requestQueue: requestQueue });
+                    });
+                });
+            }).catch(error => console.error(`Encryption error: ${error}`));
+    });
+};
+
+const sendVotedImages = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
+    browser.storage.local.get()
+        .then(result => {
+            const votedImages: number[] = result["votedImages"];
+            const targetImageSrc: string = message.data.content.imageSrc;
+            const tabId: number = sender.tab!.id!;
+            browser.tabs.sendMessage(tabId, { action: Action.reveal_image_prompt, data: { content: { votedImages: votedImages, imageSrc: targetImageSrc } } });
+        });
 };
 
 const messageMap = new messagingMap([
     [Action.redirect, redirectTab],
     [Action.get_filters, sendFilters],
     [Action.update_blocked_images, updateBlockedImages],
-    [Action.update_report_queue, updateReportQueue],
+    [Action.update_report_queue, updateRequestQueue],
+    [Action.update_voted_images, updateVotedImages],
+    [Action.make_request, makeRequest],
+    [Action.get_voted_images, sendVotedImages],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
@@ -218,12 +404,12 @@ browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.
 
 browser.contextMenus.create({
     id: "gvp-report-image",
-    title: "Report & Block Image",
+    title: "Report Image",
     contexts: ["image"],
 });
 
 browser.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === "gvp-report-image"){
+    if (info.menuItemId === "gvp-report-image") {
         browser.storage.local.get()
             .then((result) => {
                 if (info.srcUrl) {
@@ -239,7 +425,6 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                             reportCSS: resources.gvpReportCSS,
                             reportHTML: resources.gvpReportHTML,
                             base64src: info.srcUrl,
-                            reportQueue: result.reportQueue,
                         },
                     } });
                 }
@@ -261,20 +446,21 @@ let blockedSiteHTMLString: string;
 const isBlockedUrl = async (hostname: string, url: URL): Promise<filterResults> => {
     const localStorage = await browser.storage.local.get();
     const resources: HTMLResources = localStorage.documentResources;
-    if (!resources){
-        const fallbackResponse = await fetch("https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedsite.html?ref=main",{
-            headers:{
+    if (!resources) {
+        const fallbackResponse = await fetch("https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/blockedsite.html?ref=main", {
+            headers: {
                 Authorization: `${filterToken}`,
-            }
+            },
         });
         const fallbackJSON: githubResponse = await fallbackResponse.json();
         blockedSiteHTMLString = atob(fallbackJSON.content);
-    } else { blockedSiteHTMLString = resources.blockedSiteHTML; };
-    
+    } else {
+        blockedSiteHTMLString = resources.blockedSiteHTML;
+    }
     let isTemporarilyWhitelisted = false;
     const sessionWhitelistString = window.sessionStorage.getItem("whitelist");
     let sessionWhitelist: string[] = [];
-    if (sessionWhitelistString){
+    if (sessionWhitelistString) {
         const sessionWhitelistObject: whitelist = JSON.parse(sessionWhitelistString);
         sessionWhitelist = sessionWhitelistObject.whitelist;
     }
@@ -287,7 +473,7 @@ const isBlockedUrl = async (hostname: string, url: URL): Promise<filterResults> 
     console.log(`Session whitelist: ${sessionWhitelistString}`);
     console.log(`Temporarily whitelisted: ${isTemporarilyWhitelisted}`);
 
-    if (isTemporarilyWhitelisted){
+    if (isTemporarilyWhitelisted) {
         return new Promise((resolve, _) => {
             resolve({
                 "sitename": hostname,
@@ -389,3 +575,6 @@ const handleRequest = (details: _OnBeforeRequestDetails): BlockingResponse | Pro
 };
 
 browser.webRequest.onBeforeRequest.addListener(handleRequest, { urls: ["<all_urls>"], types: ["main_frame"] }, ["blocking"]);
+
+fetchPublicKey();
+fetchDatabase();
