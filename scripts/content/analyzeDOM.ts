@@ -417,8 +417,8 @@ const reportImage = (message: browserMessage): void => {
     const imageSource: string = message.data.content.base64src;
     const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${imageSource}"]`);
     reportedImages = message.data.content.reportedImages;
-    const base64regEx: RegExp = /^data/;
-    if (reportedImage?.getAttribute("src-identifier") || reportedImages.includes((base64regEx.test(imageSource) ? SparkMD5.hash(imageSource) : imageSource))) {
+    const isReported = reportedImages.includes((/^data/.test(imageSource) ? SparkMD5.hash(imageSource) : imageSource));
+    if (reportedImage?.getAttribute("src-identifier") || isReported) {
         makeNotification("This image has been reported already.");
         return;
     }
