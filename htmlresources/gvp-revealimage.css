@@ -55,10 +55,10 @@
     border-radius: 30px;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.500);
 }
-.gvp-checkbox{
+.gvp-reveal-checkbox{
     display: flex;
 }
-.gvp-checkbox img{
+.gvp-reveal-checkbox img{
     width: 40px;
     height: 40px;
 }
