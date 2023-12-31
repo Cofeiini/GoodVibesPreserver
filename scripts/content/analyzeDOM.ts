@@ -11,8 +11,8 @@ let revealImageStyleString: string;
 
 //
 
-let reportedImages: string[] = []; // Stores hashed sources of images reported by the user
-let imageFilters: imageFilter[] = []; // Stores hashed sources of images that will be filtered
+let reportedImages: imageFilter[] = []; // Stores image filters of images reported by the user
+let imageFilters: imageFilter[] = []; // Stores image filtersa from the database
 let votedImages: number[] = []; // Stores report_ID of images that the user gave feedback.
 let maxZIndex: number = 0;
 
@@ -112,7 +112,7 @@ const revealImagePrompt = (message: browserMessage): void => {
         if (image.recoverID === recoverID) {
             const reportID: number = Number(targetImage.getAttribute("gvp-report-id"));
             const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
-            const reportedByUser: boolean = reportedImages.includes(imageSource);
+            const reportedByUser: boolean = reportedImages.some(report => report.source === imageSource);
             const tagsObject = JSON.parse(image.tags);
             const imageTagArray: string[] = [];
             for (const key of Object.keys(tagsObject)) {
@@ -217,6 +217,7 @@ const filterImage = (image: HTMLImageElement): void => {
     const imageHeight = image.naturalHeight;
     const imageSource: string = (/^data/.test(image.src) ? SparkMD5.hash(image.src) : image.src);
     let isInFilters: boolean = false;
+    const isReported = reportedImages.some(report => report.source === imageSource);
     let imageTags: string = "";
     let reportID: number = 0;
     if (imageFilters) {
@@ -224,12 +225,25 @@ const filterImage = (image: HTMLImageElement): void => {
         for (const img of imageFilters) {
             if (img.source === imageSource) {
                 imageTags = img.tags;
+                console.log(`[filterImage] filters imageTags: ${imageTags}`);
                 reportID = img.id;
                 break;
             }
         }
     }
-    if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (reportedImages.includes(imageSource) || isInFilters)) {
+    if (imageTags === "") {
+        for (const img of reportedImages) {
+            if (img.source === imageSource) {
+                imageTags = img.tags;
+                console.log(`[filterImage] reported imageTags: ${imageTags}`);
+                reportID = img.id;
+                break;
+            }
+        }
+    }
+
+    if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (isReported || isInFilters)) {
+        console.log(imageSource);
         const filteredImage = generateFilteredImage(imageWidth, imageHeight);
         blockedImagesCounter++;
         blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
@@ -297,17 +311,14 @@ const checkboxesTagsId: string[] = [
     "gvp-extremism-checkbox",
 ];
 
-const makeReport = (reportData: reportObject, userReportedImages: string[]): void => {
+const makeReport = (reportData: reportObject): void => {
     const selectedTags: string[] = [];
-    userReportedImages.push(reportData.src);
-    browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: { updatedBlockedImages: userReportedImages } } });
     checkboxesTagsId.forEach(tag => {
         const checkbox: HTMLInputElement = document.getElementById(`${tag}`) as HTMLInputElement;
         if (checkbox.checked) {
             selectedTags.push(tag.split("-").at(1)!);
         }
     });
-
     reportData.tags = selectedTags;
     sendData(reportData, "report");
     document.getElementById("gvp-background")?.remove();
@@ -317,7 +328,7 @@ const reportImage = (message: browserMessage): void => {
     const imageSource: string = message.data.content.base64src;
     const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${imageSource}"]`);
     reportedImages = message.data.content.reportedImages;
-    const isReported = reportedImages.includes((/^data/.test(imageSource) ? SparkMD5.hash(imageSource) : imageSource));
+    const isReported = reportedImages.some(report => report.source === imageSource);
     if (reportedImage?.getAttribute("src-identifier") || isReported) {
         makeNotification("This image has been reported already.");
         return;
@@ -356,9 +367,13 @@ const reportImage = (message: browserMessage): void => {
         document.getElementById("gvp-background")?.remove();
     });
     document.getElementById("gvp-submit-button")?.addEventListener("click", () => {
-        makeReport(reportData, reportedImages);
+        makeReport(reportData);
     });
-    analyzeDOM(); // Call analyzeDOM() to block the image that has been reported.
+};
+
+const updateReportedImages = (message: browserMessage) => {
+    reportedImages = message.data.content.reportedImages;
+    analyzeDOM();
 };
 
 //
@@ -370,6 +385,7 @@ const messageMap = new messagingMap([
     [Action.reporting_image, reportImage],
     [Action.reveal_image_prompt, revealImagePrompt],
     [Action.make_notification, backgroundNotification],
+    [Action.update_reported_images, updateReportedImages],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {

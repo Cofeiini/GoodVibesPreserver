@@ -4,6 +4,10 @@ import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { v4 as uuidv4 } from "uuid";
 
+//
+
+let reportedImages: imageFilter[] = [];
+
 // Encryption
 
 let publicKey: CryptoKey;
@@ -87,27 +91,42 @@ let fetchDatabaseCalls: number = 0;
 const fetchDatabaseBackoffBase: number = 100;
 const fetchDatabaseBackoffCap: number = 20000;
 const fetchDatabase = () => {
-    browser.storage.local.get()
-        .then((storage) => {
-            let userID = storage.userID;
+    browser.storage.sync.get()
+        .then((syncStorage) => {
+            const userID = syncStorage.userID;
+            console.log(`[fetchDatabase] userID: ${userID}`);
             if (!userID) {
-                userID = uuidv4();
-                browser.storage.local.set({ userID: userID });
+                browser.storage.sync.set({ userID: uuidv4() });
             }
             fetch(`http://localhost:7070/getimagefilters?userid=${userID}`, {
                 method: "GET",
             })
                 .then(response => response.json())
                 .then(result => {
-                    const imageFilters: imageFilter[] = [];
-                    for (let i = 0; i < result.reports.length; i++) {
-                        imageFilters.push({
-                            source: result.reports[i].source,
-                            tags: result.reports[i].tags,
-                            id: result.reports[i].id,
+                    const databaseImageFilters: imageFilter[] = [];
+                    const databaseReportedImages: imageFilter[] = [];
+                    for (const report of result.imageFilters) {
+                        databaseImageFilters.push({
+                            source: report.source,
+                            tags: report.tags,
+                            id: report.id,
                         });
                     }
-                    browser.storage.local.set({ imageFilters: imageFilters });
+                    for (const report of result.reportedImages) {
+                        databaseReportedImages.push({
+                            source: report.source,
+                            tags: report.tags,
+                            id: report.id,
+                        });
+                    }
+                    reportedImages = databaseReportedImages;
+                    browser.storage.local.set({ imageFilters: databaseImageFilters });
+                    browser.tabs.query({})
+                        .then(tabs => {
+                            tabs.forEach(tab => {
+                                browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages } } });
+                            });
+                        });
                 })
                 .catch(err => {
                     console.error(err);
@@ -135,6 +154,12 @@ const fetchResources = async (resources: HTMLResources | fallbackResources): Pro
 };
 
 browser.runtime.onInstalled.addListener(() => {
+    browser.storage.sync.get()
+        .then(syncStorage => {
+            if (!syncStorage.userID) {
+                browser.storage.sync.set({ userID: uuidv4() });
+            }
+        });
     fetchResources(HTMLResourcesUrls)
         .then((fetchedHTMLResources: HTMLResources | fallbackResources) => {
             browser.storage.local.set({
@@ -148,16 +173,9 @@ browser.runtime.onInstalled.addListener(() => {
                     gvpRevealImageHTML: fetchedHTMLResources.gvpRevealImageHTML,
                     gvpRevealImageCSS: fetchedHTMLResources.gvpRevealImageCSS,
                 },
-                reportedImages: [] as string[],
                 requestQueue: [] as failedRequest[],
                 votedImages: [] as number[],
             });
-            browser.storage.local.get("userID")
-                .then(result => {
-                    if (!result.userID) {
-                        browser.storage.local.set({ userID: uuidv4() });
-                    }
-                });
         });
 });
 
@@ -187,7 +205,7 @@ const sendResources = (message: browserMessage, sender: browser.runtime.MessageS
                                     gvpRevealImageCSS: resources.gvpRevealImageCSS,
                                     imageFilters: result.imageFilters,
                                     votedImages: [],
-                                    reportedImages: [],
+                                    reportedImages: reportedImages,
                                 },
                             },
                         });
@@ -204,7 +222,7 @@ const sendResources = (message: browserMessage, sender: browser.runtime.MessageS
                         gvpRevealImageCSS: documentResources.gvpRevealImageCSS,
                         imageFilters: result.imageFilters,
                         votedImages: result.votedImages,
-                        reportedImages: result.reportedImages,
+                        reportedImages: reportedImages,
                     },
                 },
             });
@@ -219,10 +237,6 @@ const updateRequestQueue = async (message: browserMessage): Promise<void> => {
         requestQueue.push(request);
     });
     browser.storage.local.set({ requestQueue: requestQueue });
-};
-
-const updateBlockedImages = (message: browserMessage): void => {
-    browser.storage.local.set({ reportedImages: message.data.content.updatedBlockedImages });
 };
 
 const updateVotedImages = (message: browserMessage): void => {
@@ -271,6 +285,7 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
                         body: JSON.stringify({ data: encodedCipher }),
                     }).then(response => {
                         console.log(`Request status: ${response.status}`);
+                        fetchDatabase();
                     }).catch((error) => {
                         console.error(error);
                         browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
@@ -294,7 +309,6 @@ const sendVotedImages = (message: browserMessage, sender: browser.runtime.Messag
 
 const messageMap = new messagingMap([
     [Action.get_resources, sendResources],
-    [Action.update_blocked_images, updateBlockedImages],
     [Action.update_report_queue, updateRequestQueue],
     [Action.update_voted_images, updateVotedImages],
     [Action.make_request, makeRequest],
@@ -319,24 +333,32 @@ browser.contextMenus.create({
 
 browser.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === "gvp-report-image") {
-        browser.storage.local.get()
-            .then((result) => {
-                if (info.srcUrl) {
-                    const resources: HTMLResources = result.documentResources;
-                    console.log(result);
-                    const tabId = tab!.id!;
-                    const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
-                    browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
-                        content: {
-                            reportedImages: result.reportedImages,
-                            src: reportedSrc,
-                            userID: result.userID,
-                            reportCSS: resources.gvpReportCSS,
-                            reportHTML: resources.gvpReportHTML,
-                            base64src: info.srcUrl,
-                        },
-                    } });
+        browser.storage.sync.get()
+            .then(syncStorage => {
+                const userID = syncStorage.userID;
+                console.log(`[Context Menu] userID: ${userID}`);
+                if (!userID) {
+                    browser.storage.sync.set({ userID: uuidv4() });
                 }
+                browser.storage.local.get()
+                    .then(localStorage => {
+                        if (info.srcUrl) {
+                            const resources: HTMLResources = localStorage.documentResources;
+                            console.log(localStorage);
+                            const tabId = tab!.id!;
+                            const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
+                            browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
+                                content: {
+                                    reportedImages: reportedImages,
+                                    src: reportedSrc,
+                                    userID: syncStorage.userID,
+                                    reportCSS: resources.gvpReportCSS,
+                                    reportHTML: resources.gvpReportHTML,
+                                    base64src: info.srcUrl,
+                                },
+                            } });
+                        }
+                    });
             });
     }
 });
