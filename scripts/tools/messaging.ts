@@ -1,8 +1,6 @@
 export enum Action {
-    get_filters,
-    send_filters,
-    redirect,
-    analyze_element,
+    get_resources,
+    send_resources,
     update_blocked_images,
     reporting_image,
     update_report_queue,

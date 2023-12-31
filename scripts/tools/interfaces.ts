@@ -1,8 +1,3 @@
-export interface urlFilter {
-    pattern: RegExp,
-    tags: string[],
-}
-
 export type imageFilter = {
     source: string,
     tags: string,
@@ -46,9 +41,6 @@ export class tagCheckboxes {
 
 export type HTMLResources = {
     [key: string]: string
-    blockedSiteHTML: string,
-    blockedElementHTML: string,
-    blockedElementSmallHTML: string,
     gvpReportHTML: string,
     gvpReportCSS: string,
     gvpNotificationHTML: string,
@@ -59,20 +51,11 @@ export type HTMLResources = {
 
 export type fallbackResources = {
     [key: string]: string
-    blockedElementHTML: string,
-    blockedElementSmallHTML: string,
     gvpNotificationCSS: string,
     gvpNotificationHTML: string,
     gvpRevealImageHTML: string,
     gvpRevealImageCSS: string,
 };
-
-export interface filterResults {
-    url: URL,
-    sitename: string,
-    tags: string[],
-    blocked: boolean,
-}
 
 export interface githubResponse {
     "type": string,
