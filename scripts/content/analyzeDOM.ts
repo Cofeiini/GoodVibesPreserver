@@ -112,11 +112,11 @@ const revealImagePrompt = (message: browserMessage): void => {
     console.log(`Image SRC : ${message.data.content.imageSrc}`);
     const recoverID = message.data.content.recoverID;
     let targetImage: Element;
-    document.querySelectorAll(`img[src="${message.data.content.canvasSrc}"]`).forEach(image => {
+    for (const image of document.querySelectorAll(`img[src="${message.data.content.canvasSrc}"]`)) {
         if (image.getAttribute("src-identifier") === recoverID) {
             targetImage = image;
         }
-    });
+    }
     votedImages = message.data.content.votedImages;
     const revealImageDiv: HTMLDivElement = document.createElement("div");
     const revealImageStyle: HTMLStyleElement = document.createElement("style");

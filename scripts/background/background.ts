@@ -103,22 +103,8 @@ const fetchDatabase = () => {
             })
                 .then(response => response.json())
                 .then(result => {
-                    const databaseImageFilters: imageFilter[] = [];
-                    const databaseReportedImages: imageFilter[] = [];
-                    for (const report of result.imageFilters) {
-                        databaseImageFilters.push({
-                            source: report.source,
-                            tags: report.tags,
-                            id: report.id,
-                        });
-                    }
-                    for (const report of result.reportedImages) {
-                        databaseReportedImages.push({
-                            source: report.source,
-                            tags: report.tags,
-                            id: report.id,
-                        });
-                    }
+                    const databaseImageFilters: imageFilter[] = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
+                    const databaseReportedImages: imageFilter[] = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                     reportedImages = databaseReportedImages;
                     browser.storage.local.set({ imageFilters: databaseImageFilters });
                     browser.tabs.query({})
