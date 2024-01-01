@@ -302,8 +302,9 @@ const sendVotedImages = (message: browserMessage, sender: browser.runtime.Messag
         .then(result => {
             const votedImages: number[] = result["votedImages"];
             const targetImageSrc: string = message.data.content.imageSrc;
+            console.log(targetImageSrc);
             const tabId: number = sender.tab!.id!;
-            browser.tabs.sendMessage(tabId, { action: Action.reveal_image_prompt, data: { content: { votedImages: votedImages, imageSrc: targetImageSrc } } });
+            browser.tabs.sendMessage(tabId, { action: Action.reveal_image_prompt, data: { content: { votedImages: votedImages, imageSrc: targetImageSrc, canvasSrc: message.data.content.canvasSrc, recoverID: message.data.content.recoverID } } });
         });
 };
 

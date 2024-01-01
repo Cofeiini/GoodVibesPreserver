@@ -93,23 +93,37 @@ const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
 
 const revealImage = (event: Event): void => {
     event.preventDefault();
-    const targetImageSrc = (event.target as HTMLImageElement).src;
-    browser.runtime.sendMessage({ action: Action.get_voted_images, data: { content: { imageSrc: targetImageSrc } } });
+    const targetImageIdentifier = (event.target as HTMLImageElement).getAttribute("src-identifier");
+    const canvasSrc = (event.target as HTMLImageElement).src;
+    let targetImageSrc: string = "";
+    for (const image of blockedImagesSet) {
+        if (image.recoverID === Number(targetImageIdentifier)) {
+            targetImageSrc = image.blockedSource;
+            break;
+        }
+    }
+    browser.runtime.sendMessage({ action: Action.get_voted_images, data: { content: { imageSrc: targetImageSrc, canvasSrc: canvasSrc, recoverID: targetImageIdentifier } } });
 };
 
 const revealImagePrompt = (message: browserMessage): void => {
     if (document.getElementById("gvp-reveal-image")) {
         return;
     }
-    const targetImage: HTMLElement = document.querySelector(`img[src="${message.data.content.imageSrc}"]`)!;
+    console.log(`Image SRC : ${message.data.content.imageSrc}`);
+    const recoverID = message.data.content.recoverID;
+    let targetImage: Element;
+    document.querySelectorAll(`img[src="${message.data.content.canvasSrc}"]`).forEach(image => {
+        if (image.getAttribute("src-identifier") === recoverID) {
+            targetImage = image;
+        }
+    });
     votedImages = message.data.content.votedImages;
     const revealImageDiv: HTMLDivElement = document.createElement("div");
     const revealImageStyle: HTMLStyleElement = document.createElement("style");
     revealImageDiv.innerHTML = revealImageHTMLString;
     revealImageStyle.innerHTML = revealImageStyleString;
-    const recoverID = Number(targetImage.getAttribute("src-identifier"));
     blockedImagesSet.forEach(image => {
-        if (image.recoverID === recoverID) {
+        if (image.recoverID === Number(recoverID)) {
             const reportID: number = Number(targetImage.getAttribute("gvp-report-id"));
             const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
             const reportedByUser: boolean = reportedImages.some(report => report.source === imageSource);
@@ -123,7 +137,7 @@ const revealImagePrompt = (message: browserMessage): void => {
             const imageTags = imageTagArray.join(", ");
             document.body.appendChild(revealImageDiv);
             document.head.appendChild(revealImageStyle);
-            document.getElementById("gvp-image-preview-tags")!.textContent = `This image contains the next tags: ${imageTags}`;
+            document.getElementById("gvp-image-preview-tags")!.textContent = `${imageTags}`;
             document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
             if (reportedByUser || votedImages.includes(reportID)) {
                 document.getElementById("gvp-user-feedback")?.remove();
@@ -165,9 +179,7 @@ const revealImagePrompt = (message: browserMessage): void => {
                 }
             });
             document.getElementById("gvp-reveal-button")?.addEventListener("click", () => {
-                document.querySelectorAll(`img[src="${message.data.content.imageSrc}"]`).forEach(img => {
-                    (img as HTMLImageElement).src = image.blockedSource;
-                });
+                (targetImage as HTMLImageElement).src = image.blockedSource;
                 document.getElementById("gvp-background")?.remove();
                 skippedSources.add(image.blockedSource);
                 targetImage.removeEventListener("click", revealImage);
