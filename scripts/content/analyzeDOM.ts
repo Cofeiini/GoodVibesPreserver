@@ -115,6 +115,7 @@ const revealImagePrompt = (message: browserMessage): void => {
     for (const image of document.querySelectorAll(`img[src="${message.data.content.canvasSrc}"]`)) {
         if (image.getAttribute("src-identifier") === recoverID) {
             targetImage = image;
+            break;
         }
     }
     votedImages = message.data.content.votedImages;
