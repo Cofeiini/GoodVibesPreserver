@@ -1,7 +1,7 @@
 export enum Action {
     get_resources,
     send_resources,
-    update_blocked_images,
+    update_reported_images,
     reporting_image,
     update_report_queue,
     update_voted_images,
