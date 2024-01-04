@@ -6,7 +6,28 @@ import { v4 as uuidv4 } from "uuid";
 
 //
 
+const HTMLResourcesUrls: HTMLResources = {
+    gvpReportHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.html?ref=main",
+    gvpReportCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.css?ref=main",
+    gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
+    gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
+    gvpRevealImageHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.html?ref=main",
+    gvpRevealImageCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.css?ref=main",
+};
+
+const fallbackResources: fallbackResources = {
+    gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
+    gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
+    gvpRevealImageHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.html?ref=main",
+    gvpRevealImageCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.css?ref=main",
+};
+
+//
+
+//
+
 let reportedImages: imageFilter[] = [];
+let accessToken: string = "";
 
 // Encryption
 
@@ -65,41 +86,22 @@ const encryptData = (data: string): Promise<ArrayBuffer> => {
     return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encodedData);
 };
 
-//
-
-const HTMLResourcesUrls: HTMLResources = {
-    gvpReportHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.html?ref=main",
-    gvpReportCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.css?ref=main",
-    gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
-    gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
-    gvpRevealImageHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.html?ref=main",
-    gvpRevealImageCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.css?ref=main",
-};
-
-const fallbackResources: fallbackResources = {
-    gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
-    gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
-    gvpRevealImageHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.html?ref=main",
-    gvpRevealImageCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.css?ref=main",
-};
-
-//
-
-//Local storage setup
-
 let fetchDatabaseCalls: number = 0;
 const fetchDatabaseBackoffBase: number = 100;
 const fetchDatabaseBackoffCap: number = 20000;
 const fetchDatabase = () => {
     browser.storage.sync.get()
-        .then((syncStorage) => {
+        .then(syncStorage => {
             const userID = syncStorage.userID;
             console.log(`[fetchDatabase] userID: ${userID}`);
             if (!userID) {
                 browser.storage.sync.set({ userID: uuidv4() });
             }
-            fetch(`http://localhost:7070/getimagefilters?userid=${userID}`, {
+            fetch("http://localhost:7070/getimagefilters", {
                 method: "GET",
+                headers: {
+                    "user_id": userID,
+                },
             })
                 .then(response => response.json())
                 .then(result => {
@@ -139,6 +141,34 @@ const fetchResources = async (resources: HTMLResources | fallbackResources): Pro
     return Promise.resolve(fetchedResources);
 };
 
+const getAccessToken = () => {
+    browser.storage.sync.get()
+        .then(syncStorage => {
+            let userID = syncStorage.userID;
+            if (!userID) {
+                userID = uuidv4();
+                browser.storage.sync.set({ userID: userID });
+            }
+            return userID;
+        })
+        .then(userID => {
+            fetch("http://localhost:7070/auth", {
+                method: "GET",
+                headers: {
+                    userid: userID, // keys here will turn lowercase in the request
+                },
+            })
+                .then(response => response.json())
+                .then(result => {
+                    accessToken = result.accessToken;
+                    console.log(accessToken);
+                })
+                .catch(err => {
+                    console.error(err);
+                });
+        });
+};
+
 browser.runtime.onInstalled.addListener(() => {
     browser.storage.sync.get()
         .then(syncStorage => {
@@ -166,8 +196,6 @@ browser.runtime.onInstalled.addListener(() => {
 });
 
 //
-
-// IndexedDB filters setup
 
 //
 
@@ -250,9 +278,19 @@ const bufferEncode = async (buffer: Uint8Array) => {
 const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
     const route: string = message.data.content.route;
     const requestData: reportObject | feedbackObject = message.data.content.requestData;
+    browser.storage.sync.get()
+        .then(syncStorage => {
+            let userID = syncStorage.userID;
+            if (!userID) {
+                const fallbackId = uuidv4();
+                browser.storage.sync.set({ userID: fallbackId });
+                userID = fallbackId;
+            }
+            requestData.userID = userID;
+        });
     console.debug(requestData);
-    browser.storage.local.get().then((storage) => {
-        const requestQueue: failedRequest[] = storage["requestQueue"];
+    browser.storage.local.get().then((localStorage) => {
+        const requestQueue: failedRequest[] = localStorage["requestQueue"];
         if (!publicKey) {
             browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
             requestQueue.push({ data: requestData, route: route });
@@ -353,3 +391,4 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 
 fetchPublicKey();
 fetchDatabase();
+getAccessToken();
