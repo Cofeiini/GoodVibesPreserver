@@ -88,7 +88,6 @@ const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
         });
         sendData(feedbackData, "reportfeedback");
     }
-    console.log("Feedback without votes");
 };
 
 const revealImage = (event: Event): void => {
@@ -129,12 +128,7 @@ const revealImagePrompt = (message: browserMessage): void => {
             const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
             const reportedByUser: boolean = reportedImages.some(report => report.source === imageSource);
             const tagsObject = JSON.parse(image.tags);
-            const imageTagArray: string[] = [];
-            for (const key of Object.keys(tagsObject)) {
-                if (tagsObject[key] > 0) {
-                    imageTagArray.push(key);
-                }
-            }
+            const imageTagArray: string[] = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => key);
             const imageTags = imageTagArray.join(", ");
             document.body.appendChild(revealImageDiv);
             document.head.appendChild(revealImageStyle);
@@ -359,7 +353,7 @@ const reportImage = (message: browserMessage): void => {
     (document.getElementById("gvp-report-preview-image") as HTMLImageElement)!.src = imageSource;
     const reportData: reportObject = {
         src: message.data.content.src,
-        userID: message.data.content.userID,
+        userID: "",
         tags: [],
         timeStamp: new Date().toISOString(),
     };
