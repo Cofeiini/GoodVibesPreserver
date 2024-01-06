@@ -1,6 +1,9 @@
 import SparkMD5 from "spark-md5";
 import { reportObject, imageFilter, tagCheckboxes, feedbackObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
+import { generateFilteredImage } from "./filtercanvas";
+import { checkboxesTagsId, tags } from "./tags";
+import { maxZIndex, getMaxZIndex } from "./maxzindex";
 
 // HTML Resources
 
@@ -14,15 +17,6 @@ let revealImageStyleString: string;
 let reportedImages: imageFilter[] = []; // Stores image filters of images reported by the user
 let imageFilters: imageFilter[] = []; // Stores image filtersa from the database
 let votedImages: number[] = []; // Stores report_ID of images that the user gave feedback.
-let maxZIndex: number = 0;
-
-const getMaxZIndex = (): void => {
-    maxZIndex = Math.max(...Array.from(document.querySelectorAll("body div, body img, body nav, body section"), (element) => {
-        return parseInt(getComputedStyle(element).zIndex);
-    }).filter(zIndex => !Number.isNaN(zIndex)));
-    maxZIndex++;
-    return;
-};
 
 // GVP notification
 
@@ -72,22 +66,19 @@ const sendData = (requestData: feedbackObject | reportObject, route: string): vo
 
 // Report feedback system
 
-const tags: string[] = ["hatespeech", "extremism", "misinformation", "offensivehumor", "sexualcontent", "harassment", "gore", "drugs", "selfharm", "shockingcontent"]; // For object iteration
-
 const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
-    const hasVotes: boolean = Object.values(userVotes).some(value => {
-        return (value.tagValue !== 0);
-    });
-    if (hasVotes) {
-        votedImages.push(reportID);
-        browser.runtime.sendMessage({ action: Action.update_voted_images, data: { content: { updatedVotedImages: votedImages } } });
-        const feedbackData: feedbackObject = new feedbackObject();
-        feedbackData.reportID = reportID;
-        tags.forEach(tag => {
-            feedbackData[tag] = userVotes[tag].tagValue;
-        });
-        sendData(feedbackData, "reportfeedback");
+    const hasVotes: boolean = Object.values(userVotes).some(value => value.tagValue !== 0);
+    if (!hasVotes) {
+        return;
     }
+    votedImages.push(reportID);
+    browser.runtime.sendMessage({ action: Action.update_voted_images, data: { content: { updatedVotedImages: votedImages } } });
+    const feedbackData: feedbackObject = new feedbackObject();
+    feedbackData.reportID = reportID;
+    tags.forEach(tag => {
+        feedbackData[tag] = userVotes[tag].tagValue;
+    });
+    sendData(feedbackData, "reportfeedback");
 };
 
 const revealImage = (event: Event): void => {
@@ -194,28 +185,6 @@ const revealImagePrompt = (message: browserMessage): void => {
 
 //
 
-/**
- * @param width Width in pixels of the image that is getting filtered.
- * @param height Height in pixels of the image that is getting filtered.
- * @returns { String } Canvas element that will cover the filtered image.
- */
-
-const generateFilteredImage = (width: number, height: number): string => {
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const canvasContext = canvas.getContext("2d");
-    if (canvasContext) {
-        const gradient = canvasContext.createLinearGradient(0, 0, width, height);
-        gradient.addColorStop(0, "rgb(10,10,10)");
-        gradient.addColorStop(1, "rgb(55,55,55)");
-        canvasContext.fillStyle = gradient;
-        canvasContext.fillRect(0, 0, width, height);
-    }
-    return canvas.toDataURL("image/png");
-};
-
 const filterImage = (image: HTMLImageElement): void => {
     if (image.getAttribute("src-identifier") || image.id === "gvp-image-preview") {
         return;
@@ -228,29 +197,21 @@ const filterImage = (image: HTMLImageElement): void => {
     let imageTags: string = "";
     let reportID: number = 0;
     if (imageFilters) {
-        isInFilters = imageFilters.some(filter => filter.source === imageSource);
-        for (const img of imageFilters) {
-            if (img.source === imageSource) {
-                imageTags = img.tags;
-                console.log(`[filterImage] filters imageTags: ${imageTags}`);
-                reportID = img.id;
-                break;
-            }
+        const matchImage = imageFilters.find(img => img.source === imageSource);
+        if (matchImage) {
+            isInFilters = true;
+            imageTags = matchImage.tags;
+            reportID = matchImage.id;
         }
     }
     if (imageTags === "") {
-        for (const img of reportedImages) {
-            if (img.source === imageSource) {
-                imageTags = img.tags;
-                console.log(`[filterImage] reported imageTags: ${imageTags}`);
-                reportID = img.id;
-                break;
-            }
+        const matchImage = reportedImages.find(img => img.source === imageSource);
+        if (matchImage) {
+            imageTags = matchImage.tags;
+            reportID = matchImage.id;
         }
     }
-
     if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (isReported || isInFilters)) {
-        console.log(imageSource);
         const filteredImage = generateFilteredImage(imageWidth, imageHeight);
         blockedImagesCounter++;
         blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
@@ -261,8 +222,9 @@ const filterImage = (image: HTMLImageElement): void => {
     }
 };
 
-const analyzeImages = (images: NodeListOf<Element>): void => {
-    images.forEach(image => {
+const analyzeDOM = (): void => {
+    const imgElements: NodeListOf<Element> = document.querySelectorAll("img");
+    imgElements.forEach(image => {
         const imageElement = (image as HTMLImageElement);
         if (imageElement.complete) {
             filterImage(imageElement);
@@ -273,11 +235,6 @@ const analyzeImages = (images: NodeListOf<Element>): void => {
             filterImage(imageElement);
         });
     });
-};
-
-const analyzeDOM = (): void => {
-    const imgElements: NodeListOf<Element> = document.querySelectorAll("img");
-    analyzeImages(imgElements);
 };
 
 //
@@ -304,19 +261,6 @@ const fetchStorage = () => {
 //
 
 // Report system
-
-const checkboxesTagsId: string[] = [
-    "gvp-harassment-checkbox",
-    "gvp-selfharm-checkbox",
-    "gvp-offensivehumor-checkbox",
-    "gvp-hatespeech-checkbox",
-    "gvp-gore-checkbox",
-    "gvp-drugs-checkbox",
-    "gvp-sexualcontent-checkbox",
-    "gvp-misinformation-checkbox",
-    "gvp-shockingcontent-checkbox",
-    "gvp-extremism-checkbox",
-];
 
 const makeReport = (reportData: reportObject): void => {
     const selectedTags: string[] = [];
