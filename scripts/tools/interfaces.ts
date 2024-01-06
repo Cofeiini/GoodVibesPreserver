@@ -4,21 +4,6 @@ export type imageFilter = {
     id: number,
 };
 
-export class feedbackObject {
-    [key: string]: number;
-    reportID = 0;
-    hatespeech = 0;
-    extremism = 0;
-    misinformation = 0;
-    offensivehumor = 0;
-    sexualcontent = 0;
-    harassment = 0;
-    gore = 0;
-    drugs = 0;
-    selfharm = 0;
-    shockingcontent = 0;
-}
-
 export class tagInnerStructure {
     checkedNegative = false;
     checkedPositive = false;
@@ -73,6 +58,22 @@ export interface githubResponse {
         "html": string,
         "self": string
     }
+}
+
+export class feedbackObject {
+    [key: string]: number | string;
+    userID = "";
+    reportID = 0;
+    hatespeech = 0;
+    extremism = 0;
+    misinformation = 0;
+    offensivehumor = 0;
+    sexualcontent = 0;
+    harassment = 0;
+    gore = 0;
+    drugs = 0;
+    selfharm = 0;
+    shockingcontent = 0;
 }
 
 export type reportObject = {
