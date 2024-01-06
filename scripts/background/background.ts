@@ -86,17 +86,21 @@ const encryptData = (data: string): Promise<ArrayBuffer> => {
     return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encodedData);
 };
 
+const getUserID = async (): Promise<string> => {
+    let { userID } = await browser.storage.sync.get();
+    if (!userID) {
+        userID = uuidv4();
+        browser.storage.sync.set({ userID: userID });
+    }
+    return Promise.resolve(userID);
+};
+
 let fetchDatabaseCalls: number = 0;
 const fetchDatabaseBackoffBase: number = 100;
 const fetchDatabaseBackoffCap: number = 20000;
 const fetchDatabase = () => {
-    browser.storage.sync.get()
-        .then(syncStorage => {
-            const userID = syncStorage.userID;
-            console.log(`[fetchDatabase] userID: ${userID}`);
-            if (!userID) {
-                browser.storage.sync.set({ userID: uuidv4() });
-            }
+    getUserID()
+        .then(userID => {
             fetch("http://localhost:7070/getimagefilters", {
                 method: "GET",
                 headers: {
@@ -142,15 +146,7 @@ const fetchResources = async (resources: HTMLResources | fallbackResources): Pro
 };
 
 const getAccessToken = () => {
-    browser.storage.sync.get()
-        .then(syncStorage => {
-            let userID = syncStorage.userID;
-            if (!userID) {
-                userID = uuidv4();
-                browser.storage.sync.set({ userID: userID });
-            }
-            return userID;
-        })
+    getUserID()
         .then(userID => {
             fetch("http://localhost:7070/auth", {
                 method: "GET",
@@ -278,47 +274,43 @@ const bufferEncode = async (buffer: Uint8Array) => {
 const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
     const route: string = message.data.content.route;
     const requestData: reportObject | feedbackObject = message.data.content.requestData;
-    browser.storage.sync.get()
-        .then(syncStorage => {
-            let userID = syncStorage.userID;
-            if (!userID) {
-                const fallbackId = uuidv4();
-                browser.storage.sync.set({ userID: fallbackId });
-                userID = fallbackId;
-            }
+    getUserID()
+        .then(userID => {
             requestData.userID = userID;
+        })
+        .then(() => {
+            console.debug(requestData);
+            browser.storage.local.get().then((localStorage) => {
+                const requestQueue: failedRequest[] = localStorage["requestQueue"];
+                if (!publicKey) {
+                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
+                    requestQueue.push({ data: requestData, route: route });
+                    browser.storage.local.set({ requestQueue: requestQueue });
+                }
+                encryptData(JSON.stringify(requestData))
+                    .then(encryptedData => {
+                        const cipherText = new Uint8Array(encryptedData);
+                        bufferEncode(cipherText).then(encodedCipher => {
+                            console.log(encodedCipher);
+                            fetch(`http://localhost:7070/${route}`, {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ data: encodedCipher }),
+                            }).then(response => {
+                                console.log(`Request status: ${response.status}`);
+                                fetchDatabase();
+                            }).catch((error) => {
+                                console.error(error);
+                                browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
+                                requestQueue.push({ data: requestData, route: route });
+                                browser.storage.local.set({ requestQueue: requestQueue });
+                            });
+                        });
+                    }).catch(error => console.error(`Encryption error: ${error}`));
+            });
         });
-    console.debug(requestData);
-    browser.storage.local.get().then((localStorage) => {
-        const requestQueue: failedRequest[] = localStorage["requestQueue"];
-        if (!publicKey) {
-            browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
-            requestQueue.push({ data: requestData, route: route });
-            browser.storage.local.set({ requestQueue: requestQueue });
-        }
-        encryptData(JSON.stringify(requestData))
-            .then(encryptedData => {
-                const cipherText = new Uint8Array(encryptedData);
-                bufferEncode(cipherText).then(encodedCipher => {
-                    console.log(encodedCipher);
-                    fetch(`http://localhost:7070/${route}`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ data: encodedCipher }),
-                    }).then(response => {
-                        console.log(`Request status: ${response.status}`);
-                        fetchDatabase();
-                    }).catch((error) => {
-                        console.error(error);
-                        browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
-                        requestQueue.push({ data: requestData, route: route });
-                        browser.storage.local.set({ requestQueue: requestQueue });
-                    });
-                });
-            }).catch(error => console.error(`Encryption error: ${error}`));
-    });
 };
 
 const sendVotedImages = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
@@ -358,13 +350,8 @@ browser.contextMenus.create({
 
 browser.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === "gvp-report-image") {
-        browser.storage.sync.get()
-            .then(syncStorage => {
-                const userID = syncStorage.userID;
-                console.log(`[Context Menu] userID: ${userID}`);
-                if (!userID) {
-                    browser.storage.sync.set({ userID: uuidv4() });
-                }
+        getUserID()
+            .then(userID => {
                 browser.storage.local.get()
                     .then(localStorage => {
                         if (info.srcUrl) {
@@ -376,7 +363,7 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                                 content: {
                                     reportedImages: reportedImages,
                                     src: reportedSrc,
-                                    userID: syncStorage.userID,
+                                    userID: userID,
                                     reportCSS: resources.gvpReportCSS,
                                     reportHTML: resources.gvpReportHTML,
                                     base64src: info.srcUrl,
