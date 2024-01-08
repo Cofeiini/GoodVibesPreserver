@@ -47,45 +47,6 @@ const clearPEMFormat = (pkPEM: string): string => {
     return removedPEM!.at(1)!;
 };
 
-let fetchPkCalls: number = 0;
-const fetchPkBackoffBase: number = 50;
-const fetchPkBackoffCap: number = 15000;
-const fetchPublicKey = (): void => {
-    fetch("http://localhost:7070/publickey", {
-        method: "GET",
-    })
-        .then(response => response.json())
-        .then(async responseJSON => {
-            const publicKeyPEM = responseJSON.publicKey;
-            const publicKeyRemovedPEM: string = clearPEMFormat(publicKeyPEM);
-            const publicKeyArrayBuffer: ArrayBuffer = stringToArrayBuffer(atob(publicKeyRemovedPEM));
-            const importedPK: CryptoKey = await crypto.subtle.importKey("spki",
-                publicKeyArrayBuffer,
-                {
-                    name: "RSA-OAEP",
-                    hash: { name: "SHA-256" },
-                },
-                false,
-                ["encrypt"]
-            );
-            publicKey = importedPK;
-        })
-        .catch(err => {
-            console.error(err);
-            fetchPkCalls++;
-            const backoff = Math.min(fetchPkBackoffCap, fetchPkBackoffBase * (2 ** fetchPkCalls));
-            const jitter = Math.random();
-            const sleep = backoff * jitter;
-            console.log(`Retrying Public Key fetch, sleep: ${sleep}`);
-            setTimeout(fetchPublicKey, sleep);
-        });
-};
-
-const encryptData = (data: string): Promise<ArrayBuffer> => {
-    const encodedData: Uint8Array = new TextEncoder().encode(data);
-    return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encodedData);
-};
-
 const getUserID = async (): Promise<string> => {
     let { userID } = await browser.storage.sync.get();
     if (!userID) {
@@ -95,38 +56,119 @@ const getUserID = async (): Promise<string> => {
     return Promise.resolve(userID);
 };
 
+const getAccessToken = async (): Promise<void> => {
+    const userID = await getUserID();
+    const serverResponse = await fetch("http://localhost:7070/globalToken", {
+        method: "GET",
+        headers: {
+            userid: userID,
+        },
+    });
+    const serverResponseJSON = await serverResponse.json();
+    setTimeout(getAccessToken, 295000);
+    accessToken = serverResponseJSON.accessToken;
+    return Promise.resolve();
+};
+
+const getRequestToken = async (): Promise<string> => {
+    const userID = await getUserID();
+    const authResponse = await fetch("http://localhost:7070/requestToken", {
+        method: "GET",
+        headers: {
+            userid: userID,
+            auth: accessToken,
+        },
+    });
+    const authResponseJSON = await authResponse.json();
+    const requestToken = authResponseJSON.requestToken;
+    return Promise.resolve(requestToken);
+};
+
+let fetchPkCalls: number = 0;
+const fetchPkBackoffBase: number = 50;
+const fetchPkBackoffCap: number = 15000;
+const fetchPublicKey = (): void => {
+    getRequestToken()
+        .then(requestToken => {
+            getUserID()
+                .then(userID => {
+                    fetch("http://localhost:7070/publickey", {
+                        method: "GET",
+                        headers: {
+                            userid: userID,
+                            auth: requestToken,
+                        },
+                    })
+                        .then(response => response.json())
+                        .then(async responseJSON => {
+                            const publicKeyPEM = responseJSON.publicKey;
+                            const publicKeyRemovedPEM: string = clearPEMFormat(publicKeyPEM);
+                            const publicKeyArrayBuffer: ArrayBuffer = stringToArrayBuffer(atob(publicKeyRemovedPEM));
+                            const importedPK: CryptoKey = await crypto.subtle.importKey("spki",
+                                publicKeyArrayBuffer,
+                                {
+                                    name: "RSA-OAEP",
+                                    hash: { name: "SHA-256" },
+                                },
+                                false,
+                                ["encrypt"]
+                            );
+                            publicKey = importedPK;
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            fetchPkCalls++;
+                            const backoff = Math.min(fetchPkBackoffCap, fetchPkBackoffBase * (2 ** fetchPkCalls));
+                            const jitter = Math.random();
+                            const sleep = backoff * jitter;
+                            console.log(`Retrying Public Key fetch, sleep: ${sleep}`);
+                            setTimeout(fetchPublicKey, sleep);
+                        });
+                });
+        });
+};
+
+const encryptData = (data: string): Promise<ArrayBuffer> => {
+    const encodedData: Uint8Array = new TextEncoder().encode(data);
+    return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encodedData);
+};
+
 let fetchDatabaseCalls: number = 0;
 const fetchDatabaseBackoffBase: number = 100;
 const fetchDatabaseBackoffCap: number = 20000;
 const fetchDatabase = () => {
-    getUserID()
-        .then(userID => {
-            fetch("http://localhost:7070/getimagefilters", {
-                method: "GET",
-                headers: {
-                    "user_id": userID,
-                },
-            })
-                .then(response => response.json())
-                .then(result => {
-                    const databaseImageFilters: imageFilter[] = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
-                    const databaseReportedImages: imageFilter[] = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
-                    reportedImages = databaseReportedImages;
-                    browser.storage.local.set({ imageFilters: databaseImageFilters });
-                    browser.tabs.query({})
-                        .then(tabs => {
-                            tabs.forEach(tab => {
-                                browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages } } });
-                            });
+    getRequestToken()
+        .then(requestToken => {
+            getUserID()
+                .then(userID => {
+                    fetch("http://localhost:7070/getimagefilters", {
+                        method: "GET",
+                        headers: {
+                            userid: userID,
+                            auth: requestToken,
+                        },
+                    })
+                        .then(response => response.json())
+                        .then(result => {
+                            const databaseImageFilters: imageFilter[] = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
+                            const databaseReportedImages: imageFilter[] = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
+                            reportedImages = databaseReportedImages;
+                            browser.storage.local.set({ imageFilters: databaseImageFilters });
+                            browser.tabs.query({})
+                                .then(tabs => {
+                                    tabs.forEach(tab => {
+                                        browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages } } });
+                                    });
+                                });
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            fetchDatabaseCalls++;
+                            const backoff = Math.min(fetchDatabaseBackoffCap, fetchDatabaseBackoffBase * (2 ** fetchDatabaseCalls));
+                            const jitter = Math.random();
+                            const sleep = backoff * jitter;
+                            setTimeout(fetchDatabase, sleep);
                         });
-                })
-                .catch(err => {
-                    console.error(err);
-                    fetchDatabaseCalls++;
-                    const backoff = Math.min(fetchDatabaseBackoffCap, fetchDatabaseBackoffBase * (2 ** fetchDatabaseCalls));
-                    const jitter = Math.random();
-                    const sleep = backoff * jitter;
-                    setTimeout(fetchDatabase, sleep);
                 });
         });
 };
@@ -143,26 +185,6 @@ const fetchResources = async (resources: HTMLResources | fallbackResources): Pro
         fetchedResources[key] = atob(responseJSON.content);
     }
     return Promise.resolve(fetchedResources);
-};
-
-const getAccessToken = () => {
-    getUserID()
-        .then(userID => {
-            fetch("http://localhost:7070/auth", {
-                method: "GET",
-                headers: {
-                    userid: userID, // keys here will turn lowercase in the request
-                },
-            })
-                .then(response => response.json())
-                .then(result => {
-                    accessToken = result.accessToken;
-                    console.log(accessToken);
-                })
-                .catch(err => {
-                    console.error(err);
-                });
-        });
 };
 
 browser.runtime.onInstalled.addListener(() => {
@@ -278,8 +300,8 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
         .then(userID => {
             requestData.userID = userID;
         })
-        .then(() => {
-            console.debug(requestData);
+        .then(() => getRequestToken())
+        .then((requestToken) => {
             browser.storage.local.get().then((localStorage) => {
                 const requestQueue: failedRequest[] = localStorage["requestQueue"];
                 if (!publicKey) {
@@ -291,11 +313,11 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
                     .then(encryptedData => {
                         const cipherText = new Uint8Array(encryptedData);
                         bufferEncode(cipherText).then(encodedCipher => {
-                            console.log(encodedCipher);
                             fetch(`http://localhost:7070/${route}`, {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json",
+                                    "auth": requestToken,
                                 },
                                 body: JSON.stringify({ data: encodedCipher }),
                             }).then(response => {
@@ -376,6 +398,8 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 });
 //
 
-fetchPublicKey();
-fetchDatabase();
-getAccessToken();
+getAccessToken()
+    .then(() => {
+        fetchPublicKey();
+        fetchDatabase();
+    });
