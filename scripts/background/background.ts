@@ -2,6 +2,7 @@ import { filterToken } from "../tools/token";
 import { githubResponse, reportObject, HTMLResources, fallbackResources, imageFilter, failedRequest, feedbackObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
+import { stringToArrayBuffer, clearPEMFormat, encryptData } from "./encryption";
 import { v4 as uuidv4 } from "uuid";
 
 //
@@ -28,24 +29,9 @@ const fallbackResources: fallbackResources = {
 
 let reportedImages: imageFilter[] = [];
 let accessToken: string = "";
-
-// Encryption
-
 let publicKey: CryptoKey;
 
-const stringToArrayBuffer = (str: string): ArrayBuffer => {
-    const buf = new ArrayBuffer(str.length);
-    const bufView = new Uint8Array(buf);
-    for (let i = 0, strLen = str.length; i < strLen; i++) {
-        bufView[i] = str.charCodeAt(i);
-    }
-    return buf;
-};
-
-const clearPEMFormat = (pkPEM: string): string => {
-    const removedPEM = /^-----BEGIN PUBLIC KEY-----\n(.*)\n-----END PUBLIC KEY-----/.exec(pkPEM);
-    return removedPEM!.at(1)!;
-};
+// Encryption
 
 const getUserID = async (): Promise<string> => {
     let { userID } = await browser.storage.sync.get();
@@ -56,17 +42,28 @@ const getUserID = async (): Promise<string> => {
     return Promise.resolve(userID);
 };
 
+let accessTokenCalls: number = 0;
+const accessTokenBackoffBase: number = 50;
+const accessTokenBackoffCap: number = 10000;
 const getAccessToken = async (): Promise<void> => {
-    const userID = await getUserID();
-    const serverResponse = await fetch("http://localhost:7070/globalToken", {
-        method: "GET",
-        headers: {
-            userid: userID,
-        },
-    });
-    const serverResponseJSON = await serverResponse.json();
-    setTimeout(getAccessToken, 295000);
-    accessToken = serverResponseJSON.accessToken;
+    try {
+        const userID = await getUserID();
+        const serverResponse = await fetch("http://localhost:7070/globalToken", {
+            method: "GET",
+            headers: {
+                userid: userID,
+            },
+        });
+        const serverResponseJSON = await serverResponse.json();
+        setTimeout(getAccessToken, 295000);
+        accessToken = serverResponseJSON.accessToken;
+    } catch (err) {
+        accessTokenCalls++;
+        const backoff = Math.min(accessTokenBackoffCap, accessTokenBackoffBase * (2 ** accessTokenCalls));
+        const jitter = Math.random();
+        const sleep = backoff * jitter;
+        setTimeout(getAccessToken, sleep);
+    }
     return Promise.resolve();
 };
 
@@ -128,14 +125,9 @@ const fetchPublicKey = (): void => {
         });
 };
 
-const encryptData = (data: string): Promise<ArrayBuffer> => {
-    const encodedData: Uint8Array = new TextEncoder().encode(data);
-    return crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encodedData);
-};
-
 let fetchDatabaseCalls: number = 0;
-const fetchDatabaseBackoffBase: number = 100;
-const fetchDatabaseBackoffCap: number = 20000;
+const fetchDatabaseBackoffBase: number = 50;
+const fetchDatabaseBackoffCap: number = 15000;
 const fetchDatabase = () => {
     getRequestToken()
         .then(requestToken => {
@@ -156,6 +148,7 @@ const fetchDatabase = () => {
                             browser.storage.local.set({ imageFilters: databaseImageFilters });
                             browser.tabs.query({})
                                 .then(tabs => {
+                                    console.log(tabs);
                                     tabs.forEach(tab => {
                                         browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages } } });
                                     });
@@ -309,7 +302,7 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
                     requestQueue.push({ data: requestData, route: route });
                     browser.storage.local.set({ requestQueue: requestQueue });
                 }
-                encryptData(JSON.stringify(requestData))
+                encryptData(JSON.stringify(requestData), publicKey)
                     .then(encryptedData => {
                         const cipherText = new Uint8Array(encryptedData);
                         bufferEncode(cipherText).then(encodedCipher => {
