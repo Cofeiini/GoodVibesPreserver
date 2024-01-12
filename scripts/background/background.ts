@@ -295,36 +295,38 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
         })
         .then(() => getRequestToken())
         .then((requestToken) => {
-            browser.storage.local.get().then((localStorage) => {
-                const requestQueue: failedRequest[] = localStorage["requestQueue"];
-                if (!publicKey) {
-                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
-                    requestQueue.push({ data: requestData, route: route });
-                    browser.storage.local.set({ requestQueue: requestQueue });
-                }
-                encryptData(JSON.stringify(requestData), publicKey)
-                    .then(encryptedData => {
-                        const cipherText = new Uint8Array(encryptedData);
-                        bufferEncode(cipherText).then(encodedCipher => {
-                            fetch(`http://localhost:7070/${route}`, {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    "auth": requestToken,
-                                },
-                                body: JSON.stringify({ data: encodedCipher }),
-                            }).then(response => {
-                                console.log(`Request status: ${response.status}`);
-                                fetchDatabase();
-                            }).catch((error) => {
-                                console.error(error);
-                                browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
-                                requestQueue.push({ data: requestData, route: route });
-                                browser.storage.local.set({ requestQueue: requestQueue });
-                            });
-                        });
-                    }).catch(error => console.error(`Encryption error: ${error}`));
-            });
+            browser.storage.local.get()
+                .then((localStorage) => {
+                    const requestQueue: failedRequest[] = localStorage["requestQueue"];
+                    if (!publicKey) {
+                        browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
+                        requestQueue.push({ data: requestData, route: route });
+                        browser.storage.local.set({ requestQueue: requestQueue });
+                    }
+                    encryptData(JSON.stringify(requestData), publicKey)
+                        .then(encryptedData => {
+                            const cipherText = new Uint8Array(encryptedData);
+                            bufferEncode(cipherText)
+                                .then(encodedCipher => {
+                                    fetch(`http://localhost:7070/${route}`, {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            "auth": requestToken,
+                                        },
+                                        body: JSON.stringify({ data: encodedCipher }),
+                                    }).then(response => {
+                                        console.log(`Request status: ${response.status}`);
+                                        fetchDatabase();
+                                    }).catch((error) => {
+                                        console.error(error);
+                                        browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
+                                        requestQueue.push({ data: requestData, route: route });
+                                        browser.storage.local.set({ requestQueue: requestQueue });
+                                    });
+                                });
+                        }).catch(error => console.error(`Encryption error: ${error}`));
+                });
         });
 };
 
