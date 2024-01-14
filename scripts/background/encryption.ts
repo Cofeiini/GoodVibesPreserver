@@ -4,12 +4,7 @@ export const encryptData = (data: string, key: CryptoKey): Promise<ArrayBuffer> 
 };
 
 export const stringToArrayBuffer = (str: string): ArrayBuffer => {
-    const buf = new ArrayBuffer(str.length);
-    const bufView = new Uint8Array(buf);
-    for (let i = 0, strLen = str.length; i < strLen; i++) {
-        bufView[i] = str.charCodeAt(i);
-    }
-    return buf;
+    return Uint8Array.from(str.split("").map(char => char.charCodeAt(0)));
 };
 
 export const clearPEMFormat = (pkPEM: string): string => {

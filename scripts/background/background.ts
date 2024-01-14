@@ -99,7 +99,7 @@ const fetchPublicKey = (): void => {
                         .then(response => response.json())
                         .then(async responseJSON => {
                             const publicKeyArrayBuffer: ArrayBuffer = stringToArrayBuffer(atob(clearPEMFormat(responseJSON.publicKey)));
-                            const importedPK: CryptoKey = await crypto.subtle.importKey("spki",
+                            publicKey = await crypto.subtle.importKey("spki",
                                 publicKeyArrayBuffer,
                                 {
                                     name: "RSA-OAEP",
@@ -108,7 +108,6 @@ const fetchPublicKey = (): void => {
                                 false,
                                 ["encrypt"]
                             );
-                            publicKey = importedPK;
                         })
                         .catch(err => {
                             console.error(err);
