@@ -98,9 +98,7 @@ const fetchPublicKey = (): void => {
                     })
                         .then(response => response.json())
                         .then(async responseJSON => {
-                            const publicKeyPEM = responseJSON.publicKey;
-                            const publicKeyRemovedPEM: string = clearPEMFormat(publicKeyPEM);
-                            const publicKeyArrayBuffer: ArrayBuffer = stringToArrayBuffer(atob(publicKeyRemovedPEM));
+                            const publicKeyArrayBuffer: ArrayBuffer = stringToArrayBuffer(atob(clearPEMFormat(responseJSON.publicKey)));
                             const importedPK: CryptoKey = await crypto.subtle.importKey("spki",
                                 publicKeyArrayBuffer,
                                 {
@@ -143,8 +141,7 @@ const fetchDatabase = () => {
                         .then(response => response.json())
                         .then(result => {
                             const databaseImageFilters: imageFilter[] = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
-                            const databaseReportedImages: imageFilter[] = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
-                            reportedImages = databaseReportedImages;
+                            reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             browser.storage.local.set({ imageFilters: databaseImageFilters });
                             browser.tabs.query({})
                                 .then(tabs => {

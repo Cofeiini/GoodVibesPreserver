@@ -2,7 +2,7 @@ import SparkMD5 from "spark-md5";
 import { reportObject, imageFilter, tagCheckboxes, feedbackObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import { generateFilteredImage } from "./filtercanvas";
-import { checkboxesTagsId, tags } from "./tags";
+import { checkboxesTagsId, tagsLookup } from "./tags";
 import { maxZIndex, getMaxZIndex } from "./maxzindex";
 
 // HTML Resources
@@ -75,7 +75,7 @@ const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
     browser.runtime.sendMessage({ action: Action.update_voted_images, data: { content: { updatedVotedImages: votedImages } } });
     const feedbackData: feedbackObject = new feedbackObject();
     feedbackData.reportID = reportID;
-    tags.forEach(tag => {
+    tagsLookup.forEach(tag => {
         feedbackData[tag] = userVotes[tag].tagValue;
     });
     sendData(feedbackData, "reportfeedback");

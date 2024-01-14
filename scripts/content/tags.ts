@@ -1,5 +1,5 @@
 
-export const tags: string[] = ["hatespeech", "extremism", "misinformation", "offensivehumor", "sexualcontent", "harassment", "gore", "drugs", "selfharm", "shockingcontent"];
+export const tagsLookup: string[] = ["hatespeech", "extremism", "misinformation", "offensivehumor", "sexualcontent", "harassment", "gore", "drugs", "selfharm", "shockingcontent"];
 
 export const checkboxesTagsId: string[] = [
     "gvp-harassment-checkbox",

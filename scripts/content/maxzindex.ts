@@ -4,5 +4,4 @@ export const getMaxZIndex = (): void => {
         return parseInt(getComputedStyle(element).zIndex);
     }).filter(zIndex => !Number.isNaN(zIndex)));
     maxZIndex++;
-    return;
 };
