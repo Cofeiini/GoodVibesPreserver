@@ -337,12 +337,18 @@ const sendVotedImages = (message: browserMessage, sender: browser.runtime.Messag
         });
 };
 
+const handleTurnOffOn = (message: browserMessage) => {
+    const status: boolean = message.data.content.status;
+    console.log(`Extension status: ${status}`);
+};
+
 const messageMap = new messagingMap([
     [Action.get_resources, sendResources],
     [Action.update_report_queue, updateRequestQueue],
     [Action.update_voted_images, updateVotedImages],
     [Action.make_request, makeRequest],
     [Action.get_voted_images, sendVotedImages],
+    [Action.turnOffOn, handleTurnOffOn]
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {

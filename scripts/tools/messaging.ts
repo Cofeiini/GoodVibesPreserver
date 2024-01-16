@@ -9,6 +9,7 @@ export enum Action {
     get_voted_images,
     reveal_image_prompt,
     make_notification,
+    turnOffOn,
 }
 
 export type browserMessage = {
