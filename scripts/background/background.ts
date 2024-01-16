@@ -142,6 +142,7 @@ const fetchDatabase = () => {
                             const databaseImageFilters: imageFilter[] = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             browser.storage.local.set({ imageFilters: databaseImageFilters });
+                            browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
                             browser.tabs.query({})
                                 .then(tabs => {
                                     console.log(tabs);
@@ -187,7 +188,7 @@ browser.runtime.onInstalled.addListener(() => {
         .then((fetchedHTMLResources: HTMLResources | fallbackResources) => {
             browser.storage.local.set({
                 whitelist: [] as string[],
-                blockedAmount: 0,
+                blockedImagesAmount: 0,
                 documentResources: {
                     gvpReportHTML: fetchedHTMLResources.gvpReportHTML,
                     gvpReportCSS: fetchedHTMLResources.gvpReportCSS,
@@ -339,7 +340,15 @@ const sendVotedImages = (message: browserMessage, sender: browser.runtime.Messag
 
 const handleTurnOffOn = (message: browserMessage) => {
     const status: boolean = message.data.content.status;
+    browser.contextMenus.update("gvp-report-image", {
+        enabled: status,
+    });
     console.log(`Extension status: ${status}`);
+};
+
+const updateBlockedImages = async (message: browserMessage) => {
+    const { blockedImagesAmount } = await browser.storage.local.get();
+    browser.storage.local.set({ blockedImagesAmount: blockedImagesAmount + 1 });
 };
 
 const messageMap = new messagingMap([
@@ -348,7 +357,8 @@ const messageMap = new messagingMap([
     [Action.update_voted_images, updateVotedImages],
     [Action.make_request, makeRequest],
     [Action.get_voted_images, sendVotedImages],
-    [Action.turnOffOn, handleTurnOffOn]
+    [Action.turn_off_on, handleTurnOffOn],
+    [Action.update_blocked_images, updateBlockedImages],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {

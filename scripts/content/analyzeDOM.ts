@@ -217,6 +217,7 @@ const filterImage = (image: HTMLImageElement): void => {
         blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
         image.setAttribute("src-identifier", `${blockedImagesCounter}`);
         image.setAttribute("gvp-report-id", `${reportID}`);
+        browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: {} } });
         image.src = filteredImage;
         image.addEventListener("click", revealImage);
     }
