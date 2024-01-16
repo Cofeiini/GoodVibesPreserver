@@ -17,6 +17,7 @@ let revealImageStyleString: string;
 let reportedImages: imageFilter[] = []; // Stores image filters of images reported by the user
 let imageFilters: imageFilter[] = []; // Stores image filtersa from the database
 let votedImages: number[] = []; // Stores report_ID of images that the user gave feedback.
+let extensionOn: boolean = true;
 
 // GVP notification
 
@@ -224,18 +225,20 @@ const filterImage = (image: HTMLImageElement): void => {
 };
 
 const analyzeDOM = (): void => {
-    const imgElements: NodeListOf<Element> = document.querySelectorAll("img");
-    imgElements.forEach(image => {
-        const imageElement = (image as HTMLImageElement);
-        if (imageElement.complete) {
-            filterImage(imageElement);
-            return;
-        }
+    if (extensionOn) {
+        const imgElements: NodeListOf<Element> = document.querySelectorAll("img");
+        imgElements.forEach(image => {
+            const imageElement = (image as HTMLImageElement);
+            if (imageElement.complete) {
+                filterImage(imageElement);
+                return;
+            }
 
-        image.addEventListener("load", () => {
-            filterImage(imageElement);
+            image.addEventListener("load", () => {
+                filterImage(imageElement);
+            });
         });
-    });
+    }
 };
 
 //
@@ -250,6 +253,7 @@ const setupStorage = (message: browserMessage) => {
     imageFilters = message.data.content.imageFilters;
     reportedImages = message.data.content.reportedImages;
     votedImages = message.data.content.votedImages;
+    extensionOn = message.data.content.extensionOn;
     // Probably make an object instead of storing in individual variables.
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };

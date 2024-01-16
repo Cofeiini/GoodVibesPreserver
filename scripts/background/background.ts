@@ -188,6 +188,7 @@ browser.runtime.onInstalled.addListener(() => {
         .then((fetchedHTMLResources: HTMLResources | fallbackResources) => {
             browser.storage.local.set({
                 whitelist: [] as string[],
+                extensionOn: true,
                 blockedImagesAmount: 0,
                 documentResources: {
                     gvpReportHTML: fetchedHTMLResources.gvpReportHTML,
@@ -228,6 +229,7 @@ const sendResources = (message: browserMessage, sender: browser.runtime.MessageS
                                     imageFilters: result.imageFilters,
                                     votedImages: [],
                                     reportedImages: reportedImages,
+                                    extensionOn: result.extensionOn,
                                 },
                             },
                         });
@@ -245,6 +247,7 @@ const sendResources = (message: browserMessage, sender: browser.runtime.MessageS
                         imageFilters: result.imageFilters,
                         votedImages: result.votedImages,
                         reportedImages: reportedImages,
+                        extensionOn: result.extensionOn,
                     },
                 },
             });
@@ -338,15 +341,16 @@ const sendVotedImages = (message: browserMessage, sender: browser.runtime.Messag
         });
 };
 
-const handleTurnOffOn = (message: browserMessage) => {
-    const status: boolean = message.data.content.status;
+const handleTurnOffOn = async (message: browserMessage) => {
+    const { extensionOn } = await browser.storage.local.get();
     browser.contextMenus.update("gvp-report-image", {
-        enabled: status,
+        enabled: !extensionOn,
     });
-    console.log(`Extension status: ${status}`);
+    browser.storage.local.set({ extensionOn: !extensionOn });
+    console.log(`Extension status: ${!extensionOn}`);
 };
 
-const updateBlockedImages = async (message: browserMessage) => {
+const updateBlockedImages = async () => {
     const { blockedImagesAmount } = await browser.storage.local.get();
     browser.storage.local.set({ blockedImagesAmount: blockedImagesAmount + 1 });
 };

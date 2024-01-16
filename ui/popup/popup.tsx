@@ -42,11 +42,16 @@ const BlockedImages: React.FC = () => {
 const PowerButton: React.FC = () => {
     const [status, setStatus] = React.useState(true);
     React.useEffect(() => {
-        browser.runtime.sendMessage({ action: Action.turn_off_on, data: { content: { status: status } } });
-    }, [status]);
+        const getStatus = async () => {
+            const { extensionOn } = await browser.storage.local.get();
+            setStatus(extensionOn ?? true);
+        };
+        getStatus();
+    });
     return (
         <div className="gvp-popup-power-button" style={{ backgroundColor: status ? "white" : "rgb(40,40,40)" }} onClick={ () => {
             setStatus(!status);
+            browser.runtime.sendMessage({ action: Action.turn_off_on, data: { content: { } } });
         }}>
             <img src={ powerIcon } width={28} height={28} className="gvp-popup-status-indicator" style={{
                 transform: status ? "translateX(40px)" : "translateX(0px)",
@@ -68,9 +73,24 @@ const Popup: React.FC = () => {
                 <img src={ settingsIcon } className="gvp-settings-button" width={ 30 } height={ 30 } onClick={ () => {
                     browser.tabs.create({ url: "../options/options.html" });
                 }}></img>
-                <ReportedImages/>
-                <BlockedImages/>
-                <PowerButton/>
+                <section className="gvp-popup-content">
+                    <PowerButton/>
+                    <section className="gvp-popup-statistics-section">
+                        <ReportedImages/>
+                        <BlockedImages/>
+                    </section>
+                    <section className="gvp-popup-links">
+                        <div>
+                            <a href="">Github</a>
+                        </div>
+                        <div>
+                            <a href="">Privacy</a>
+                        </div>
+                        <div>
+                            <a href="">Help</a>
+                        </div>
+                    </section>
+                </section>
             </main>
         </>
     );

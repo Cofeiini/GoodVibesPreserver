@@ -70,13 +70,18 @@ var BlockedImages = () => {
 var PowerButton = () => {
   const [status, setStatus] = React.useState(true);
   React.useEffect(() => {
-    browser.runtime.sendMessage({ action: Action.turn_off_on, data: { content: { status } } });
-  }, [status]);
+    const getStatus = async () => {
+      const { extensionOn } = await browser.storage.local.get();
+      setStatus(extensionOn ?? true);
+    };
+    getStatus();
+  });
   return React.createElement("div", {
     className: "gvp-popup-power-button",
     style: { backgroundColor: status ? "white" : "rgb(40,40,40)" },
     onClick: () => {
       setStatus(!status);
+      browser.runtime.sendMessage({ action: Action.turn_off_on, data: { content: {} } });
     }
   }, React.createElement("img", {
     src: power_icon_default,
@@ -109,7 +114,19 @@ var Popup = () => {
     onClick: () => {
       browser.tabs.create({ url: "../options/options.html" });
     }
-  }), React.createElement(ReportedImages, null), React.createElement(BlockedImages, null), React.createElement(PowerButton, null)));
+  }), React.createElement("section", {
+    className: "gvp-popup-content"
+  }, React.createElement(PowerButton, null), React.createElement("section", {
+    className: "gvp-popup-statistics-section"
+  }, React.createElement(ReportedImages, null), React.createElement(BlockedImages, null)), React.createElement("section", {
+    className: "gvp-popup-links"
+  }, React.createElement("div", null, React.createElement("a", {
+    href: ""
+  }, "Github")), React.createElement("div", null, React.createElement("a", {
+    href: ""
+  }, "Privacy")), React.createElement("div", null, React.createElement("a", {
+    href: ""
+  }, "Help"))))));
 };
 var root = client.createRoot(document.getElementById("gvp-popup-root"));
 root.render(React.createElement(Popup, null));
