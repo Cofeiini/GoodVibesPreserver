@@ -47,7 +47,7 @@ const PowerButton: React.FC = () => {
             setStatus(extensionOn ?? true);
         };
         getStatus();
-    });
+    }, []);
     return (
         <div className="gvp-popup-power-button" style={{ backgroundColor: status ? "white" : "rgb(40,40,40)" }} onClick={ () => {
             setStatus(!status);
