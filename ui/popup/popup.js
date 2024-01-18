@@ -9,7 +9,7 @@ var React = __toESM(require_react(), 1);
 var client = __toESM(require_client(), 1);
 
 // assets/settings-icon.svg
-var settings_icon_default = "../settings-icon-d99d085425053ff1.svg";
+var settings_icon_default = "../settings-icon-2e735c8e3ab18031.svg";
 
 // assets/power-icon.svg
 var power_icon_default = "../power-icon-a04e8bc50edd1829.svg";
@@ -38,7 +38,7 @@ var ReportedImages = () => {
   React.useEffect(() => {
     const getReportedImages = async () => {
       const { reportedImagesAmount } = await browser.storage.local.get();
-      setReportedImages(reportedImagesAmount);
+      setReportedImages(reportedImagesAmount ?? 0);
     };
     getReportedImages();
   });
@@ -55,7 +55,7 @@ var BlockedImages = () => {
   React.useEffect(() => {
     const getBlockedImages = async () => {
       const { blockedImagesAmount } = await browser.storage.local.get();
-      setBlockedImages(blockedImagesAmount);
+      setBlockedImages(blockedImagesAmount ?? 0);
     };
     getBlockedImages();
   });
@@ -75,7 +75,7 @@ var PowerButton = () => {
       setStatus(extensionOn ?? true);
     };
     getStatus();
-  });
+  }, []);
   return React.createElement("div", {
     className: "gvp-popup-power-button",
     style: { backgroundColor: status ? "white" : "rgb(40,40,40)" },

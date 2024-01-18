@@ -5,12 +5,12 @@ import settingsIcon from "../../assets/settings-icon.svg";
 import powerIcon from "../../assets/power-icon.svg";
 import { Action } from "../../scripts/tools/messaging";
 
-const ReportedImages: React.FC = () => {
+const ReportedImages = () => {
     const [reportedImages, setReportedImages] = React.useState(0);
     React.useEffect(() => {
         const getReportedImages = async () => {
             const { reportedImagesAmount } = await browser.storage.local.get();
-            setReportedImages(reportedImagesAmount);
+            setReportedImages(reportedImagesAmount ?? 0);
         };
         getReportedImages();
     });
@@ -22,12 +22,12 @@ const ReportedImages: React.FC = () => {
     );
 };
 
-const BlockedImages: React.FC = () => {
+const BlockedImages = () => {
     const [blockedImages, setBlockedImages] = React.useState(0);
     React.useEffect(() => {
         const getBlockedImages = async () => {
             const { blockedImagesAmount } = await browser.storage.local.get();
-            setBlockedImages(blockedImagesAmount);
+            setBlockedImages(blockedImagesAmount ?? 0);
         };
         getBlockedImages();
     });
@@ -39,7 +39,7 @@ const BlockedImages: React.FC = () => {
     );
 };
 
-const PowerButton: React.FC = () => {
+const PowerButton = () => {
     const [status, setStatus] = React.useState(true);
     React.useEffect(() => {
         const getStatus = async () => {
@@ -65,7 +65,7 @@ const PowerButton: React.FC = () => {
     );
 };
 
-const Popup: React.FC = () => {
+const Popup = () => {
     return (
         <>
             <main className="gvp-popup-main">
