@@ -131,6 +131,7 @@ dist
 
 # Project JS files
 scripts/**/*.js
+ui/**/*.js
 
 #Filter token file
 scripts/tools/token.ts
@@ -146,3 +147,6 @@ scripts/tools/token.ts
 
 # Extension builds
 web-ext-artifacts/
+
+# Assets SVGs chunks
+ui/**/*.svg
