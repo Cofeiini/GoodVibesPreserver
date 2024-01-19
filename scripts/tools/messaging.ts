@@ -6,8 +6,6 @@ export enum Action {
     update_report_queue,
     update_voted_images,
     make_request,
-    get_voted_images,
-    reveal_image_prompt,
     make_notification,
     turn_off_on,
     update_blocked_images,

@@ -16,7 +16,7 @@ let revealImageStyleString: string;
 
 let reportedImages: imageFilter[] = []; // Stores image filters of images reported by the user
 let imageFilters: imageFilter[] = []; // Stores image filtersa from the database
-let votedImages: number[] = []; // Stores report_ID of images that the user gave feedback.
+let votedImages: string[] = []; // Stores report_ID of images that the user gave feedback.
 let extensionOn: boolean = true;
 
 // GVP notification
@@ -72,7 +72,6 @@ const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
     if (!hasVotes) {
         return;
     }
-    votedImages.push(reportID);
     browser.runtime.sendMessage({ action: Action.update_voted_images, data: { content: { updatedVotedImages: votedImages } } });
     const feedbackData: feedbackObject = new feedbackObject();
     feedbackData.reportID = reportID;
@@ -93,23 +92,19 @@ const revealImage = (event: Event): void => {
             break;
         }
     }
-    browser.runtime.sendMessage({ action: Action.get_voted_images, data: { content: { imageSrc: targetImageSrc, canvasSrc: canvasSrc, recoverID: targetImageIdentifier } } });
-};
-
-const revealImagePrompt = (message: browserMessage): void => {
     if (document.getElementById("gvp-reveal-image")) {
         return;
     }
-    console.log(`Image SRC : ${message.data.content.imageSrc}`);
-    const recoverID = message.data.content.recoverID;
+    console.log(`Image SRC : ${targetImageSrc}`);
+    const recoverID = targetImageIdentifier;
     let targetImage: Element;
-    for (const image of document.querySelectorAll(`img[src="${message.data.content.canvasSrc}"]`)) {
+    for (const image of document.querySelectorAll(`img[src="${canvasSrc}"]`)) {
         if (image.getAttribute("src-identifier") === recoverID) {
             targetImage = image;
             break;
         }
     }
-    votedImages = message.data.content.votedImages;
+    console.log(votedImages);
     const revealImageDiv: HTMLDivElement = document.createElement("div");
     const revealImageStyle: HTMLStyleElement = document.createElement("style");
     revealImageDiv.innerHTML = revealImageHTMLString;
@@ -126,7 +121,7 @@ const revealImagePrompt = (message: browserMessage): void => {
             document.head.appendChild(revealImageStyle);
             document.getElementById("gvp-image-preview-tags")!.textContent = `${imageTags}`;
             document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
-            if (reportedByUser || votedImages.includes(reportID)) {
+            if (reportedByUser || votedImages.includes(imageSource)) { //object not array
                 document.getElementById("gvp-user-feedback")?.remove();
             }
             (document.getElementById("gvp-image-preview") as HTMLImageElement).src = image.blockedSource;
@@ -329,6 +324,7 @@ const reportImage = (message: browserMessage): void => {
 
 const updateReportedImages = (message: browserMessage) => {
     reportedImages = message.data.content.reportedImages;
+    votedImages = message.data.content.votedImages;
     analyzeDOM();
 };
 
@@ -339,7 +335,6 @@ const updateReportedImages = (message: browserMessage) => {
 const messageMap = new messagingMap([
     [Action.send_resources, setupStorage],
     [Action.reporting_image, reportImage],
-    [Action.reveal_image_prompt, revealImagePrompt],
     [Action.make_notification, backgroundNotification],
     [Action.update_reported_images, updateReportedImages],
 ]);

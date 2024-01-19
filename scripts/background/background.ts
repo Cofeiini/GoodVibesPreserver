@@ -28,6 +28,7 @@ const fallbackResources: fallbackResources = {
 //
 
 let reportedImages: imageFilter[] = [];
+let votedImages: string[] = [];
 let accessToken: string = "";
 let publicKey: CryptoKey;
 
@@ -141,13 +142,15 @@ const fetchDatabase = () => {
                         .then(result => {
                             const databaseImageFilters: imageFilter[] = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
+                            votedImages = result.userVotes;
+                            console.log(votedImages);
                             browser.storage.local.set({ imageFilters: databaseImageFilters });
                             browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
                             browser.tabs.query({})
                                 .then(tabs => {
                                     console.log(tabs);
                                     tabs.forEach(tab => {
-                                        browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages } } });
+                                        browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages, votedImages: votedImages } } });
                                     });
                                 });
                         })
@@ -199,7 +202,6 @@ browser.runtime.onInstalled.addListener(() => {
                     gvpRevealImageCSS: fetchedHTMLResources.gvpRevealImageCSS,
                 },
                 requestQueue: [] as failedRequest[],
-                votedImages: [] as number[],
             });
         });
 });
@@ -227,7 +229,7 @@ const sendResources = (message: browserMessage, sender: browser.runtime.MessageS
                                     gvpRevealImageHTML: resources.gvpRevealImageHTML,
                                     gvpRevealImageCSS: resources.gvpRevealImageCSS,
                                     imageFilters: result.imageFilters,
-                                    votedImages: [],
+                                    votedImages: votedImages,
                                     reportedImages: reportedImages,
                                     extensionOn: result.extensionOn,
                                 },
@@ -245,7 +247,7 @@ const sendResources = (message: browserMessage, sender: browser.runtime.MessageS
                         gvpRevealImageHTML: documentResources.gvpRevealImageHTML,
                         gvpRevealImageCSS: documentResources.gvpRevealImageCSS,
                         imageFilters: result.imageFilters,
-                        votedImages: result.votedImages,
+                        votedImages: votedImages,
                         reportedImages: reportedImages,
                         extensionOn: result.extensionOn,
                     },
@@ -262,10 +264,6 @@ const updateRequestQueue = async (message: browserMessage): Promise<void> => {
         requestQueue.push(request);
     });
     browser.storage.local.set({ requestQueue: requestQueue });
-};
-
-const updateVotedImages = (message: browserMessage): void => {
-    browser.storage.local.set({ votedImages: message.data.content.updatedVotedImages });
 };
 
 const bufferEncode = async (buffer: Uint8Array) => {
@@ -330,24 +328,19 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
         });
 };
 
-const sendVotedImages = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
-    browser.storage.local.get()
-        .then(result => {
-            const votedImages: number[] = result["votedImages"];
-            const targetImageSrc: string = message.data.content.imageSrc;
-            console.log(targetImageSrc);
-            const tabId: number = sender.tab!.id!;
-            browser.tabs.sendMessage(tabId, { action: Action.reveal_image_prompt, data: { content: { votedImages: votedImages, imageSrc: targetImageSrc, canvasSrc: message.data.content.canvasSrc, recoverID: message.data.content.recoverID } } });
-        });
-};
+/* const sendVotedImages = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
+    const targetImageSrc: string = message.data.content.imageSrc;
+    console.log(targetImageSrc);
+    const tabId: number = sender.tab!.id!;
+    browser.tabs.sendMessage(tabId, { action: Action.reveal_image_prompt, data: { content: { votedImages: votedImages, imageSrc: targetImageSrc, canvasSrc: message.data.content.canvasSrc, recoverID: message.data.content.recoverID } } });
+}; */
 
-const handleTurnOffOn = async (message: browserMessage) => {
+const handleTurnOffOn = async () => {
     const { extensionOn } = await browser.storage.local.get();
     browser.contextMenus.update("gvp-report-image", {
         enabled: !extensionOn,
     });
     browser.storage.local.set({ extensionOn: !extensionOn });
-    console.log(`Extension status: ${!extensionOn}`);
 };
 
 const updateBlockedImages = async () => {
@@ -358,9 +351,7 @@ const updateBlockedImages = async () => {
 const messageMap = new messagingMap([
     [Action.get_resources, sendResources],
     [Action.update_report_queue, updateRequestQueue],
-    [Action.update_voted_images, updateVotedImages],
     [Action.make_request, makeRequest],
-    [Action.get_voted_images, sendVotedImages],
     [Action.turn_off_on, handleTurnOffOn],
     [Action.update_blocked_images, updateBlockedImages],
 ]);
