@@ -27,6 +27,7 @@ const fallbackResources: fallbackResources = {
 
 //
 
+let imageFilters: imageFilter[] = [];
 let reportedImages: imageFilter[] = [];
 let votedImages: string[] = [];
 let accessToken: string = "";
@@ -140,17 +141,16 @@ const fetchDatabase = () => {
                     })
                         .then(response => response.json())
                         .then(result => {
-                            const databaseImageFilters: imageFilter[] = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
+                            imageFilters = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             votedImages = result.userVotes;
                             console.log(votedImages);
-                            browser.storage.local.set({ imageFilters: databaseImageFilters });
                             browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
                             browser.tabs.query({})
                                 .then(tabs => {
                                     console.log(tabs);
                                     tabs.forEach(tab => {
-                                        browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages, votedImages: votedImages } } });
+                                        browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages, votedImages: votedImages, imageFilters: imageFilters } } });
                                     });
                                 });
                         })
@@ -228,7 +228,7 @@ const sendResources = (message: browserMessage, sender: browser.runtime.MessageS
                                     notificationHTMLString: resources.gvpNotificationHTML,
                                     gvpRevealImageHTML: resources.gvpRevealImageHTML,
                                     gvpRevealImageCSS: resources.gvpRevealImageCSS,
-                                    imageFilters: result.imageFilters,
+                                    imageFilters: imageFilters,
                                     votedImages: votedImages,
                                     reportedImages: reportedImages,
                                     extensionOn: result.extensionOn,
@@ -246,7 +246,7 @@ const sendResources = (message: browserMessage, sender: browser.runtime.MessageS
                         notificationHTMLString: documentResources.gvpNotificationHTML,
                         gvpRevealImageHTML: documentResources.gvpRevealImageHTML,
                         gvpRevealImageCSS: documentResources.gvpRevealImageCSS,
-                        imageFilters: result.imageFilters,
+                        imageFilters: imageFilters,
                         votedImages: votedImages,
                         reportedImages: reportedImages,
                         extensionOn: result.extensionOn,

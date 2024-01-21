@@ -142,16 +142,20 @@ const revealImage = (event: Event): void => {
                 });
             });
             negativeCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener("click", () => {
-                    const tagString: string = checkbox.id.split("-").at(3)!;
-                    userVotes[tagString].checkedNegative = !(userVotes[tagString].checkedNegative);
-                    (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedNegative) ? "red" : "transparent";
-                    if (userVotes[tagString].checkedNegative) {
-                        userVotes[tagString].checkedPositive = false;
-                        document.getElementById(`gvp-positive-checkbox-${tagString}`)!.style.backgroundColor = "transparent";
-                    }
-                    userVotes[tagString].tagValue = (Number(userVotes[tagString].checkedNegative) ^ Number(userVotes[tagString].checkedPositive)) - (Number(userVotes[tagString].checkedNegative) << 1);
-                });
+                const tag = checkbox.id.split("-").at(3)!;
+                if (imageTags.includes(tag)) {
+                    checkbox.addEventListener("click", () => {
+                        userVotes[tag].checkedNegative = !(userVotes[tag].checkedNegative);
+                        (checkbox as HTMLElement).style.backgroundColor = (userVotes[tag].checkedNegative) ? "red" : "transparent";
+                        if (userVotes[tag].checkedNegative) {
+                            userVotes[tag].checkedPositive = false;
+                            document.getElementById(`gvp-positive-checkbox-${tag}`)!.style.backgroundColor = "transparent";
+                        }
+                        userVotes[tag].tagValue = (Number(userVotes[tag].checkedNegative) ^ Number(userVotes[tag].checkedPositive)) - (Number(userVotes[tag].checkedNegative) << 1);
+                    });
+                    return;
+                }
+                (checkbox as HTMLElement).style.cursor = "not-allowed";
             });
 
             document.getElementById("gvp-noreveal-button")?.addEventListener("click", () => {
@@ -197,6 +201,9 @@ const filterImage = (image: HTMLImageElement): void => {
         if (matchImage) {
             isInFilters = true;
             imageTags = matchImage.tags;
+            if (!Object.values(JSON.parse(imageTags)).some(tagValue => tagValue === 1)) {
+                return;
+            }
             reportID = matchImage.id;
         }
     }
@@ -228,7 +235,6 @@ const analyzeDOM = (): void => {
                 filterImage(imageElement);
                 return;
             }
-
             image.addEventListener("load", () => {
                 filterImage(imageElement);
             });
@@ -325,6 +331,7 @@ const reportImage = (message: browserMessage): void => {
 const updateReportedImages = (message: browserMessage) => {
     reportedImages = message.data.content.reportedImages;
     votedImages = message.data.content.votedImages;
+    imageFilters = message.data.content.imageFilters;
     analyzeDOM();
 };
 
