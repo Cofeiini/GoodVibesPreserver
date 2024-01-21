@@ -328,13 +328,6 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
         });
 };
 
-/* const sendVotedImages = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
-    const targetImageSrc: string = message.data.content.imageSrc;
-    console.log(targetImageSrc);
-    const tabId: number = sender.tab!.id!;
-    browser.tabs.sendMessage(tabId, { action: Action.reveal_image_prompt, data: { content: { votedImages: votedImages, imageSrc: targetImageSrc, canvasSrc: message.data.content.canvasSrc, recoverID: message.data.content.recoverID } } });
-}; */
-
 const handleTurnOffOn = async () => {
     const { extensionOn } = await browser.storage.local.get();
     browser.contextMenus.update("gvp-report-image", {
