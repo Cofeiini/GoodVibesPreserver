@@ -302,7 +302,7 @@ const reportImage = (message: browserMessage): void => {
     document.head.appendChild(reportStyle);
     document.body.appendChild(reportDiv);
     document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
-    (document.getElementById("gvp-report-preview-image") as HTMLImageElement)!.src = imageSource;
+    (document.getElementById("gvp-report-preview-image") as HTMLImageElement)!.src = imageSourceBase64;
     const reportData: reportObject = {
         src: message.data.content.src,
         userID: "",
