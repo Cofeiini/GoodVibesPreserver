@@ -121,7 +121,7 @@ const revealImage = (event: Event): void => {
             document.head.appendChild(revealImageStyle);
             document.getElementById("gvp-image-preview-tags")!.textContent = `${imageTags}`;
             document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
-            if (reportedByUser || votedImages.includes(imageSource)) { //object not array
+            if (reportedByUser || votedImages.includes(imageSource)) {
                 document.getElementById("gvp-user-feedback")?.remove();
             }
             (document.getElementById("gvp-image-preview") as HTMLImageElement).src = image.blockedSource;
@@ -282,11 +282,13 @@ const makeReport = (reportData: reportObject): void => {
 };
 
 const reportImage = (message: browserMessage): void => {
-    const imageSource: string = message.data.content.base64src;
-    const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${imageSource}"]`);
+    const imageSourceBase64: string = message.data.content.base64src;
+    const imageSource: string = (/^data/.test(imageSourceBase64) ? SparkMD5.hash(imageSourceBase64) : imageSourceBase64);
+    const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${imageSourceBase64}"]`);
     reportedImages = message.data.content.reportedImages;
     const isReported = reportedImages.some(report => report.source === imageSource);
-    if (reportedImage?.getAttribute("src-identifier") || isReported) {
+    const isVoted = votedImages.includes(imageSource);
+    if (reportedImage?.getAttribute("src-identifier") || isReported || isVoted) {
         makeNotification("This image has been reported already.");
         return;
     }
