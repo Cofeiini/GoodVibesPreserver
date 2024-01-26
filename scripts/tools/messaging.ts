@@ -10,6 +10,7 @@ export enum Action {
     turn_off_on,
     update_blocked_images,
     get_blocked_images_amount,
+    revealed_image,
 }
 
 export type browserMessage = {

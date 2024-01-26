@@ -18,6 +18,7 @@ let reportedImages: imageFilter[] = []; // Stores image filters of images report
 let imageFilters: imageFilter[] = []; // Stores image filtersa from the database
 let votedImages: string[] = []; // Stores report_ID of images that the user gave feedback.
 let extensionOn: boolean = true;
+let imageWhitelist: string[] = [];
 
 // GVP notification
 
@@ -133,7 +134,7 @@ const revealImage = (event: Event): void => {
                 checkbox.addEventListener("click", () => {
                     const tagString: string = checkbox.id.split("-").at(3)!;
                     userVotes[tagString].checkedPositive = !(userVotes[tagString].checkedPositive);
-                    (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedPositive) ? "green" : "transparent";
+                    (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedPositive) ? "rgb(12, 145, 0)" : "transparent";
                     if (userVotes[tagString].checkedPositive) {
                         userVotes[tagString].checkedNegative = false;
                         document.getElementById(`gvp-negative-checkbox-${tagString}`)!.style.backgroundColor = "transparent";
@@ -146,7 +147,7 @@ const revealImage = (event: Event): void => {
                 if (imageTags.includes(tag)) {
                     checkbox.addEventListener("click", () => {
                         userVotes[tag].checkedNegative = !(userVotes[tag].checkedNegative);
-                        (checkbox as HTMLElement).style.backgroundColor = (userVotes[tag].checkedNegative) ? "red" : "transparent";
+                        (checkbox as HTMLElement).style.backgroundColor = (userVotes[tag].checkedNegative) ? "rgb(179, 0, 0)" : "transparent";
                         if (userVotes[tag].checkedNegative) {
                             userVotes[tag].checkedPositive = false;
                             document.getElementById(`gvp-positive-checkbox-${tag}`)!.style.backgroundColor = "transparent";
@@ -165,6 +166,7 @@ const revealImage = (event: Event): void => {
                 }
             });
             document.getElementById("gvp-reveal-button")?.addEventListener("click", () => {
+                const whitelistCheckbox = document.getElementById("gvp-whitelist-checkbox")!;
                 (targetImage as HTMLImageElement).src = image.blockedSource;
                 document.getElementById("gvp-background")?.remove();
                 skippedSources.add(image.blockedSource);
@@ -172,6 +174,7 @@ const revealImage = (event: Event): void => {
                 if (reportID !== 0 && !reportedByUser) {
                     sendFeedback(userVotes, reportID);
                 }
+                browser.runtime.sendMessage({ action: Action.revealed_image, data: { content: { whitelist: (whitelistCheckbox as HTMLInputElement).checked, source: imageSource } } });
             });
             document.getElementById("gvp-reveal-preview")!.addEventListener("click", () => {
                 document.getElementById("gvp-image-preview")!.style.filter = "none";
@@ -214,7 +217,7 @@ const filterImage = (image: HTMLImageElement): void => {
             reportID = matchImage.id;
         }
     }
-    if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (isReported || isInFilters)) {
+    if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (isReported || isInFilters) && !imageWhitelist.includes(imageSource)) {
         const filteredImage = generateFilteredImage(imageWidth, imageHeight);
         blockedImagesCounter++;
         blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
@@ -255,7 +258,8 @@ const setupStorage = (message: browserMessage) => {
     reportedImages = message.data.content.reportedImages;
     votedImages = message.data.content.votedImages;
     extensionOn = message.data.content.extensionOn;
-    // Probably make an object instead of storing in individual variables.
+    imageWhitelist = message.data.content.sessionWhitelist;
+    imageWhitelist.concat(message.data.content.localWhitelist);
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };
 
@@ -288,7 +292,7 @@ const reportImage = (message: browserMessage): void => {
     reportedImages = message.data.content.reportedImages;
     const isReported = reportedImages.some(report => report.source === imageSource);
     const isVoted = votedImages.includes(imageSource);
-    if (reportedImage?.getAttribute("src-identifier") || isReported || isVoted) {
+    if (reportedImage?.getAttribute("src-identifier") || isReported || isVoted || imageWhitelist.includes(imageSource)) {
         makeNotification("This image has been reported already.");
         return;
     }

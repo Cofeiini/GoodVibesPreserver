@@ -191,6 +191,7 @@ browser.runtime.onInstalled.addListener(() => {
         .then((fetchedHTMLResources: HTMLResources | fallbackResources) => {
             browser.storage.local.set({
                 whitelist: [] as string[],
+                whitelistedImages: [] as string[],
                 extensionOn: true,
                 blockedImagesAmount: 0,
                 documentResources: {
@@ -212,48 +213,50 @@ browser.runtime.onInstalled.addListener(() => {
 
 //Messaging system
 
-const sendResources = (message: browserMessage, sender: browser.runtime.MessageSender) => {
+const sendResources = async (message: browserMessage, sender: browser.runtime.MessageSender) => {
     const senderId = sender.tab!.id!;
-    browser.storage.local.get()
-        .then((result) => {
-            const documentResources: HTMLResources = result.documentResources;
-            if (!documentResources) { // If the content script tries to fetch the filters before the onInstalled event is completed, this will work as a fallback for that.
-                fetchResources(fallbackResources)
-                    .then(resources => {
-                        browser.tabs.sendMessage(senderId, {
-                            action: Action.send_resources,
-                            data: {
-                                content: {
-                                    notificationCSSString: resources.gvpNotificationCSS,
-                                    notificationHTMLString: resources.gvpNotificationHTML,
-                                    gvpRevealImageHTML: resources.gvpRevealImageHTML,
-                                    gvpRevealImageCSS: resources.gvpRevealImageCSS,
-                                    imageFilters: imageFilters,
-                                    votedImages: votedImages,
-                                    reportedImages: reportedImages,
-                                    extensionOn: result.extensionOn,
-                                },
-                            },
-                        });
-                    });
-                return;
-            }
-            browser.tabs.sendMessage(senderId, {
-                action: Action.send_resources,
-                data: {
-                    content: {
-                        notificationCSSString: documentResources.gvpNotificationCSS,
-                        notificationHTMLString: documentResources.gvpNotificationHTML,
-                        gvpRevealImageHTML: documentResources.gvpRevealImageHTML,
-                        gvpRevealImageCSS: documentResources.gvpRevealImageCSS,
-                        imageFilters: imageFilters,
-                        votedImages: votedImages,
-                        reportedImages: reportedImages,
-                        extensionOn: result.extensionOn,
-                    },
+    const localStorage = await browser.storage.local.get();
+    const { sessionWhitelistedImages } = await browser.storage.session.get();
+    if (!localStorage.documentResources) {
+        const resources = await fetchResources(fallbackResources);
+        browser.tabs.sendMessage(senderId, {
+            action: Action.send_resources,
+            data: {
+                content: {
+                    notificationCSSString: resources.gvpNotificationCSS,
+                    notificationHTMLString: resources.gvpNotificationHTML,
+                    gvpRevealImageHTML: resources.gvpRevealImageHTML,
+                    gvpRevealImageCSS: resources.gvpRevealImageCSS,
+                    imageFilters: imageFilters,
+                    votedImages: votedImages,
+                    reportedImages: reportedImages,
+                    extensionOn: localStorage.extensionOn,
+                    localWhitelist: localStorage.whitelistedImages,
+                    sessionWhitelist: sessionWhitelistedImages,
                 },
-            });
+            },
         });
+        return;
+    }
+
+    browser.tabs.sendMessage(senderId, {
+        action: Action.send_resources,
+        data: {
+            content: {
+                notificationCSSString: localStorage.documentResources.gvpNotificationCSS,
+                notificationHTMLString: localStorage.documentResources.gvpNotificationHTML,
+                gvpRevealImageHTML: localStorage.documentResources.gvpRevealImageHTML,
+                gvpRevealImageCSS: localStorage.documentResources.gvpRevealImageCSS,
+                imageFilters: imageFilters,
+                votedImages: votedImages,
+                reportedImages: reportedImages,
+                extensionOn: localStorage.extensionOn,
+                localWhitelist: localStorage.whitelistedImages,
+                sessionWhitelist: sessionWhitelistedImages,
+            },
+        },
+    });
+
 };
 
 const updateRequestQueue = async (message: browserMessage): Promise<void> => {
@@ -341,12 +344,25 @@ const updateBlockedImages = async () => {
     browser.storage.local.set({ blockedImagesAmount: blockedImagesAmount + 1 });
 };
 
+const updateRevealedImages = async (message: browserMessage) => {
+    if (message.data.content.whitelist) {
+        const { whitelistedImages } = await browser.storage.local.get();
+        whitelistedImages.push(message.data.content.source);
+        browser.storage.local.set({ whitelistedImages: whitelistedImages });
+    } else {
+        const { sessionWhitelistedImages } = await browser.storage.session.get();
+        sessionWhitelistedImages.push(message.data.content.source);
+        browser.storage.session.set({ sessionWhitelistedImages: sessionWhitelistedImages });
+    }
+};
+
 const messageMap = new messagingMap([
     [Action.get_resources, sendResources],
     [Action.update_report_queue, updateRequestQueue],
     [Action.make_request, makeRequest],
     [Action.turn_off_on, handleTurnOffOn],
     [Action.update_blocked_images, updateBlockedImages],
+    [Action.revealed_image, updateRevealedImages],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
@@ -395,6 +411,7 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 
 getAccessToken()
     .then(() => {
+        browser.storage.session.set({ sessionWhitelistedImages: [] as string[] });
         fetchPublicKey();
         fetchDatabase();
     });
