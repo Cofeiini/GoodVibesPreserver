@@ -258,8 +258,8 @@ const setupStorage = (message: browserMessage) => {
     reportedImages = message.data.content.reportedImages;
     votedImages = message.data.content.votedImages;
     extensionOn = message.data.content.extensionOn;
-    imageWhitelist = message.data.content.sessionWhitelist;
-    imageWhitelist.concat(message.data.content.localWhitelist);
+    imageWhitelist = message.data.content.sessionWhitelist.concat(message.data.content.localWhitelist);
+    console.log(`Image whitelist: ${imageWhitelist}`);
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };
 
