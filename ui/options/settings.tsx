@@ -1,12 +1,18 @@
 import * as React from "react";
+import { Action } from "../../scripts/tools/messaging";
 
-const CustomCheckbox = ({ handleCheck }: { handleCheck: CallableFunction }) => {
+const CustomCheckbox = ({ settingName }: { settingName: string }) => {
     const [isChecked, setIsChecked] = React.useState(false);
     React.useEffect(() => {
-        handleCheck(isChecked);
-    }, [isChecked]);
+        const getSettingStatus = async () => {
+            const { [settingName]: value } = await browser.storage.local.get();
+            setIsChecked(value);
+        };
+        getSettingStatus();
+    });
     return (
         <div className="custom-checkbox" style={{ backgroundColor: isChecked ? "rgb(210,210,210)" : "rgb(40,40,40)" }} onClick={() => {
+            browser.runtime.sendMessage({ action: Action.setting, data: { content: { setting: settingName } } });
             setIsChecked(!isChecked);
         }}>
             <div className="checkbox-indicator" style={{
@@ -16,13 +22,13 @@ const CustomCheckbox = ({ handleCheck }: { handleCheck: CallableFunction }) => {
     );
 };
 
-const Setting = ({ settingText, settingToggle }: { settingText: string, settingToggle: CallableFunction }) => {
+const Setting = ({ settingName, settingText }: { settingName: string, settingText: string }) => {
     return (
         <>
             <hr></hr>
             <div className="setting">
                 <label>{ settingText }</label>
-                <CustomCheckbox handleCheck={ settingToggle }/>
+                <CustomCheckbox settingName={ settingName }/>
             </div>
             <hr></hr>
         </>
@@ -32,14 +38,10 @@ const Setting = ({ settingText, settingToggle }: { settingText: string, settingT
 export const SettingsSection = () => {
     return (
         <div className="settings-content">
-            <h1 className="title">Settings</h1>
+            <h1 className="settings-title">Settings</h1>
             <div className="settings-list">
-                <Setting settingText="I am a settingsettingsettingsettingsettingsettingsettingsettingsetting" settingToggle={() => {
-                }}/>
-                <Setting settingText="I am a settingsettingsettingsettingsettingsettingsettingsettingsetting" settingToggle={() => {
-                }}/>
-                <Setting settingText="I am a settingsettingsettingsettingsettingsettingsettingsettingsetting" settingToggle={() => {
-                }}/>
+                <Setting settingName="extensionOn" settingText="Turn Off/On"/>
+                <Setting settingName="votingEnabled" settingText="Disable/Enable Voting"/>
             </div>
         </div>
     );
