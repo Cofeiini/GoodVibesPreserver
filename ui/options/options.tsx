@@ -1,12 +1,14 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
+import { SettingsSection } from "./settings";
 import optionsIcon from "../../assets/options-settings-icon.svg";
 import helpIcon from "../../assets/help-icon.svg";
 import privacyIcon from "../../assets/privacy-icon.svg";
 import customizeIcon from "../../assets/customize-icon.svg";
 import githubIcon from "../../assets/github-icon.svg";
 import contactIcon from "../../assets/contact-icon.svg";
+import { CustomizeSection } from "./customize";
 
 interface menuItems {
     settings: boolean,
@@ -23,22 +25,6 @@ const PrivacySection = () => {
     );
 };
 
-const CustomizeSection = () => {
-    return (
-        <div>
-            Customize;
-        </div>
-    );
-};
-
-const SettingsSection = () => {
-    return (
-        <div>
-            Settings;
-        </div>
-    );
-};
-
 const HelpSection = () => {
     return (
         <div>
@@ -48,14 +34,15 @@ const HelpSection = () => {
 };
 
 const MenuItem = ({ itemName, itemIcon, isSelected, selectCallback }: { itemName: string, itemIcon: string, isSelected: boolean, selectCallback: CallableFunction }) => {
-    const [hasLabel, setHasLabel] = React.useState(true);
+    const [isWrapped, setIsWrapped] = React.useState(true);
     React.useLayoutEffect(() => {
         const checkSize = () => {
             const menuItemTarget: HTMLDivElement = document.querySelector(".menu-item")!;
             if (menuItemTarget) {
-                setHasLabel(menuItemTarget.offsetWidth > 158);
+                setIsWrapped(menuItemTarget.offsetWidth > 158);
             }
         };
+        checkSize();
         window.addEventListener("resize", checkSize);
         return () => {
             window.removeEventListener("resize", checkSize);
@@ -66,7 +53,7 @@ const MenuItem = ({ itemName, itemIcon, isSelected, selectCallback }: { itemName
             selectCallback(itemName);
         }}>
             <img width="40px" height="40px" src={ itemIcon } className="menu-item-icon"></img>
-            { hasLabel && <label className="menu-item-label">{ itemName }</label> }
+            { isWrapped && <label className="menu-item-label">{ itemName }</label> }
         </div>
     );
 };
@@ -81,9 +68,9 @@ const Menu = ({ itemsState, selectCallback }: { itemsState: menuItems, selectCal
                 <hr></hr>
                 <section className="menu-items">
                     <MenuItem itemIcon={ optionsIcon } itemName="Settings" isSelected={ itemsState.settings } selectCallback={ selectCallback } />
+                    <MenuItem itemIcon={ customizeIcon } itemName="Customize" isSelected={ itemsState.customize } selectCallback={ selectCallback } />
                     <MenuItem itemIcon={ helpIcon } itemName="Help" isSelected={ itemsState.help } selectCallback={ selectCallback } />
                     <MenuItem itemIcon={ privacyIcon } itemName="Privacy" isSelected={ itemsState.privacy } selectCallback={ selectCallback } />
-                    <MenuItem itemIcon={ customizeIcon } itemName="Customize" isSelected={ itemsState.customize } selectCallback={ selectCallback } />
                 </section>
                 <hr></hr>
             </div>
@@ -115,12 +102,14 @@ const OptionsPage = () => {
     return (
         <main className="main-section">
             <Menu itemsState={ selectedItem } selectCallback={ onSelect }/>
-            <section className="menu-item-content">
-                { selectedItem.customize && <CustomizeSection/> }
-                { selectedItem.help && <HelpSection/> }
-                { selectedItem.privacy && <PrivacySection/> }
-                { selectedItem.settings && <SettingsSection/> }
-            </section>
+            <div className="menu-item-display">
+                <section className="menu-item-content">
+                    { selectedItem.customize && <CustomizeSection/> }
+                    { selectedItem.help && <HelpSection/> }
+                    { selectedItem.privacy && <PrivacySection/> }
+                    { selectedItem.settings && <SettingsSection/> }
+                </section>
+            </div>
         </main>
     );
 };

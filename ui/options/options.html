@@ -27,14 +27,13 @@
     }
 
     .main-section {
-        display: flex;
-        justify-content: center;
         height: 100%;
-        gap: 10%;
+        display: flex;
+        box-sizing: border-box;
     }
 
     .menu {
-        width: 320px;
+        width: 15%;
         height: 100%;
         background-color: rgb(31, 31, 31);
         display: flex;
@@ -47,6 +46,7 @@
         border-left: solid 1px grey ;
         border-right: solid 1px grey;
         min-width: 85px;
+        max-width: 320px;
     }
 
     .menu-main {
@@ -66,14 +66,20 @@
         background-color: grey;
         border-radius: 50px;
         padding: 5px;
+        transition: ease-in-out .3s;
     }
 
-    .menu-item-content {
-        width: 1200px;
+    .menu-logo:hover {
+        box-shadow: 0 0 10px red;
+    }
+
+    .menu-item-display {
+        display: flex;
+        width: 100%;
+        justify-content: center;
+        align-items: center;
         height: 100%;
-        background-color: rgb(31,31,31);
-        border-left: solid 1px grey;
-        border-right: solid 1px grey;
+        background-color: inherit;
     }
 
     .menu-items {
@@ -143,6 +149,126 @@
 
     .menu-footer-item:hover {
         background-color: rgb(40,40,40);
+    }
+
+
+    .menu-item-content {
+        width: 90%;
+        height: 100%;
+        background-color: rgb(31,31,31);
+        border-left: solid 1px grey;
+        border-right: solid 1px grey;
+        right: 10%;
+        max-width: 1200px;
+        box-sizing: border-box;
+        padding: 50px;
+        color: rgb(210,210,210);
+        overflow-y: scroll;
+    }
+
+    .title {
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: bold;
+        font-size: 40px;
+    }
+
+    .settings-content {
+        position: relative;
+        width: 100%;
+    }
+
+    .settings-list {
+        display: flex;
+        flex-direction: column;
+        margin-top: 30px;
+        gap: 10px;
+        flex-wrap: wrap;
+        box-sizing: border-box;
+    }
+
+    .setting {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        align-items: center;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 25px;
+        word-break: break-all;
+        justify-content: space-between;
+    }
+
+    .custom-checkbox {
+        width: 80px;
+        height: 40px;
+        border-radius: 40px;
+        box-shadow: inset 0 0 5px black;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        transition: ease-in-out .2s;
+    }
+
+    .checkbox-indicator {
+        width: 30px;
+        height: 30px;
+        border-radius: 30px;
+        background-color: rgb(220, 220, 220);
+        box-shadow: 0 0 5px black;
+        margin-left: 5px;
+        transition: ease-in-out .2s;
+    }
+
+    .customize-section {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .whitelist-elements {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .whitelist-thumbnail {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        width: 100%;
+    }
+
+    .whitelist-thumbnail img {
+        border-radius: 5px;
+        border: solid 2px rgb(240,240,240);
+    }
+
+    .whitelist-button {
+        padding: 15px;
+        font-size: 20px;
+        border-radius: 10px;
+        border: solid 2px rgb(240,240,240);
+        background-color: transparent;
+        box-shadow: 0 0 10px black;
+        color: white;
+        transition: ease-in-out .2s;
+        cursor: pointer;
+    }
+
+    .whitelist-button:hover {
+        background-color: rgb(240,240,240);
+        color: black;
+    }
+
+    @media screen and (max-width: 480px) {
+        .setting {
+            font-size: 12px;
+        }
+
+        .whitelist-thumbnail {
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
     }
 
 </style>
