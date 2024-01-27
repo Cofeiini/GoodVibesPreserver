@@ -51,7 +51,7 @@ const PowerButton = () => {
     return (
         <div className="gvp-popup-power-button" style={{ backgroundColor: status ? "white" : "rgb(40,40,40)" }} onClick={ () => {
             setStatus(!status);
-            browser.runtime.sendMessage({ action: Action.turn_off_on, data: { content: { } } });
+            browser.runtime.sendMessage({ action: Action.setting, data: { content: { setting: "extensionOn" } } });
         }}>
             <img src={ powerIcon } width={28} height={28} className="gvp-popup-status-indicator" style={{
                 transform: status ? "translateX(40px)" : "translateX(0px)",
