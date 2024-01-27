@@ -18,6 +18,7 @@ let reportedImages: imageFilter[] = []; // Stores image filters of images report
 let imageFilters: imageFilter[] = []; // Stores image filtersa from the database
 let votedImages: string[] = []; // Stores report_ID of images that the user gave feedback.
 let extensionOn: boolean = true;
+let votingEnabled: boolean = true;
 let imageWhitelist: string[] = [];
 
 // GVP notification
@@ -122,7 +123,7 @@ const revealImage = (event: Event): void => {
             document.head.appendChild(revealImageStyle);
             document.getElementById("gvp-image-preview-tags")!.textContent = `${imageTags}`;
             document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
-            if (reportedByUser || votedImages.includes(imageSource)) {
+            if (reportedByUser || votedImages.includes(imageSource) || !votingEnabled) {
                 document.getElementById("gvp-user-feedback")?.remove();
             }
             (document.getElementById("gvp-image-preview") as HTMLImageElement).src = image.blockedSource;
@@ -258,6 +259,7 @@ const setupStorage = (message: browserMessage) => {
     reportedImages = message.data.content.reportedImages;
     votedImages = message.data.content.votedImages;
     extensionOn = message.data.content.extensionOn;
+    votingEnabled = message.data.content.votingEnabled;
     let localWhitelist = message.data.content.localWhitelist;
     if (localWhitelist) {
         localWhitelist = (localWhitelist as whitelistedImage[]).map(image => image.source);
@@ -345,6 +347,12 @@ const updateReportedImages = (message: browserMessage) => {
     analyzeDOM();
 };
 
+const updateSettings = (message: browserMessage) => {
+    extensionOn = message.data.content.extensionOn ?? extensionOn;
+    votingEnabled = message.data.content.votingEnabled ?? votingEnabled;
+    analyzeDOM();
+};
+
 //
 
 // Messaging setup
@@ -354,6 +362,7 @@ const messageMap = new messagingMap([
     [Action.reporting_image, reportImage],
     [Action.make_notification, backgroundNotification],
     [Action.update_reported_images, updateReportedImages],
+    [Action.update_settings, updateSettings],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {

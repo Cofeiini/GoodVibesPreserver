@@ -194,6 +194,7 @@ browser.runtime.onInstalled.addListener(() => {
                 whitelist: [] as string[],
                 whitelistedImages: [] as whitelistedImage[],
                 extensionOn: true,
+                votingEnabled: true,
                 blockedImagesAmount: 0,
                 documentResources: {
                     gvpReportHTML: fetchedHTMLResources.gvpReportHTML,
@@ -232,6 +233,7 @@ const sendResources = async (message: browserMessage, sender: browser.runtime.Me
                     votedImages: votedImages,
                     reportedImages: reportedImages,
                     extensionOn: localStorage.extensionOn,
+                    votingEnabled: localStorage.votingEnabled,
                     localWhitelist: localStorage.whitelistedImages,
                     sessionWhitelist: sessionWhitelistedImages,
                 },
@@ -252,6 +254,7 @@ const sendResources = async (message: browserMessage, sender: browser.runtime.Me
                 votedImages: votedImages,
                 reportedImages: reportedImages,
                 extensionOn: localStorage.extensionOn,
+                votingEnabled: localStorage.votingEnabled,
                 localWhitelist: localStorage.whitelistedImages,
                 sessionWhitelist: sessionWhitelistedImages,
             },
@@ -332,12 +335,18 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
         });
 };
 
-const handleTurnOffOn = async () => {
-    const { extensionOn } = await browser.storage.local.get();
+const handleSetting = async (message: browserMessage) => {
+    const { [message.data.content.setting]: value } = await browser.storage.local.get();
     browser.contextMenus.update("gvp-report-image", {
-        enabled: !extensionOn,
+        enabled: !value,
     });
-    browser.storage.local.set({ extensionOn: !extensionOn });
+    browser.storage.local.set({ [message.data.content.setting]: !value });
+    browser.tabs.query({})
+        .then(tabs => {
+            tabs.forEach(tab => {
+                browser.tabs.sendMessage(tab!.id!, { action: Action.update_settings, data: { content: { [message.data.content.setting]: !value } } });
+            });
+        });
 };
 
 const updateBlockedImages = async () => {
@@ -362,7 +371,7 @@ const messageMap = new messagingMap([
     [Action.get_resources, sendResources],
     [Action.update_report_queue, updateRequestQueue],
     [Action.make_request, makeRequest],
-    [Action.turn_off_on, handleTurnOffOn],
+    [Action.setting, handleSetting],
     [Action.update_blocked_images, updateBlockedImages],
     [Action.revealed_image, updateRevealedImages],
 ]);
