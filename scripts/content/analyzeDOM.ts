@@ -1,5 +1,5 @@
 import SparkMD5 from "spark-md5";
-import { reportObject, imageFilter, tagCheckboxes, feedbackObject } from "../tools/interfaces";
+import { reportObject, imageFilter, tagCheckboxes, feedbackObject, whitelistedImage } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import { generateFilteredImage } from "./filtercanvas";
 import { checkboxesTagsId, tagsLookup } from "./tags";
@@ -174,7 +174,7 @@ const revealImage = (event: Event): void => {
                 if (reportID !== 0 && !reportedByUser) {
                     sendFeedback(userVotes, reportID);
                 }
-                browser.runtime.sendMessage({ action: Action.revealed_image, data: { content: { whitelist: (whitelistCheckbox as HTMLInputElement).checked, source: imageSource } } });
+                browser.runtime.sendMessage({ action: Action.revealed_image, data: { content: { whitelist: (whitelistCheckbox as HTMLInputElement).checked, source: imageSource, base64src: image.blockedSource } } });
             });
             document.getElementById("gvp-reveal-preview")!.addEventListener("click", () => {
                 document.getElementById("gvp-image-preview")!.style.filter = "none";
@@ -258,7 +258,11 @@ const setupStorage = (message: browserMessage) => {
     reportedImages = message.data.content.reportedImages;
     votedImages = message.data.content.votedImages;
     extensionOn = message.data.content.extensionOn;
-    imageWhitelist = message.data.content.sessionWhitelist.concat(message.data.content.localWhitelist);
+    let localWhitelist = message.data.content.localWhitelist;
+    if (localWhitelist) {
+        localWhitelist = (localWhitelist as whitelistedImage[]).map(image => image.source);
+    }
+    imageWhitelist = message.data.content.sessionWhitelist.concat(localWhitelist);
     console.log(`Image whitelist: ${imageWhitelist}`);
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };

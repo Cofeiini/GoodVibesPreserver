@@ -1,9 +1,10 @@
 import { filterToken } from "../tools/token";
-import { githubResponse, reportObject, HTMLResources, fallbackResources, imageFilter, failedRequest, feedbackObject } from "../tools/interfaces";
+import { githubResponse, reportObject, HTMLResources, fallbackResources, imageFilter, failedRequest, feedbackObject, whitelistedImage } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { stringToArrayBuffer, clearPEMFormat, encryptData } from "./encryption";
 import { v4 as uuidv4 } from "uuid";
+import makeThumbnail from "./makethumbnail";
 
 //
 
@@ -191,7 +192,7 @@ browser.runtime.onInstalled.addListener(() => {
         .then((fetchedHTMLResources: HTMLResources | fallbackResources) => {
             browser.storage.local.set({
                 whitelist: [] as string[],
-                whitelistedImages: [] as string[],
+                whitelistedImages: [] as whitelistedImage[],
                 extensionOn: true,
                 blockedImagesAmount: 0,
                 documentResources: {
@@ -347,7 +348,8 @@ const updateBlockedImages = async () => {
 const updateRevealedImages = async (message: browserMessage) => {
     if (message.data.content.whitelist) {
         const { whitelistedImages } = await browser.storage.local.get();
-        whitelistedImages.push(message.data.content.source);
+        const thumbnail = await makeThumbnail(message.data.content.base64src);
+        whitelistedImages.push({ source: message.data.content.source, thumbnail: thumbnail });
         browser.storage.local.set({ whitelistedImages: whitelistedImages });
     } else {
         const { sessionWhitelistedImages } = await browser.storage.session.get();
