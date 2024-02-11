@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Browser extension that blocks unpleasant content",
   "scripts": {
-    "build": "find ./scripts \\( -path \"./scripts/tools\" \\) -prune -o -iname \"*.ts\" -exec sh -c 'bun build \"{}\" --outfile \"${0%.*}\".js' {} ';'",
+    "build": "find ./scripts \\( -path \"./scripts/tools\" \\) -prune -o -iname \"*.ts\" -exec sh -c 'bun build \"{}\" --outfile \"${0%.*}\".js' {} ';' && bun build ui/options/options.tsx ui/popup/popup.tsx --outdir ui --splitting",
     "dev": "bun run build && web-ext run --devtools",
     "dev-update": "bun x npm-check-updates -u"
   },
