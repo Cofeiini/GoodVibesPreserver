@@ -20,6 +20,7 @@ let votedImages: string[] = []; // Stores report_ID of images that the user gave
 let extensionOn: boolean = true;
 let votingEnabled: boolean = true;
 let imageWhitelist: string[] = [];
+const canvasSources: string[] = [];
 
 // GVP notification
 
@@ -220,6 +221,7 @@ const filterImage = (image: HTMLImageElement): void => {
     }
     if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (isReported || isInFilters) && !imageWhitelist.includes(imageSource)) {
         const filteredImage = generateFilteredImage(imageWidth, imageHeight);
+        canvasSources.push(SparkMD5.hash(filteredImage));
         blockedImagesCounter++;
         blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
         image.setAttribute("src-identifier", `${blockedImagesCounter}`);
@@ -294,6 +296,10 @@ const makeReport = (reportData: reportObject): void => {
 const reportImage = (message: browserMessage): void => {
     const imageSourceBase64: string = message.data.content.base64src;
     const imageSource: string = (/^data/.test(imageSourceBase64) ? SparkMD5.hash(imageSourceBase64) : imageSourceBase64);
+    if (canvasSources.includes(imageSource)) {
+        makeNotification("What are you even trying to do?");
+        return;
+    }
     const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${imageSourceBase64}"]`);
     reportedImages = message.data.content.reportedImages;
     const isReported = reportedImages.some(report => report.source === imageSource);

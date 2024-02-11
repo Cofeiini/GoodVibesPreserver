@@ -1,5 +1,5 @@
 import { filterToken } from "../tools/token";
-import { githubResponse, reportObject, HTMLResources, fallbackResources, imageFilter, failedRequest, feedbackObject, whitelistedImage } from "../tools/interfaces";
+import { githubResponse, reportObject, HTMLResources, fallbackResources, imageFilter, failedRequest, feedbackObject, whitelistedImage, backoffObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { stringToArrayBuffer, clearPEMFormat, encryptData } from "./encryption";
@@ -45,9 +45,12 @@ const getUserID = async (): Promise<string> => {
     return Promise.resolve(userID);
 };
 
-let accessTokenCalls: number = 0;
-const accessTokenBackoffBase: number = 50;
-const accessTokenBackoffCap: number = 10000;
+const accessTokenBackoff: backoffObject = {
+    calls: 0,
+    base: 50,
+    cap: 10000,
+};
+
 const getAccessToken = async (): Promise<void> => {
     try {
         const userID = await getUserID();
@@ -61,8 +64,8 @@ const getAccessToken = async (): Promise<void> => {
         setTimeout(getAccessToken, 295000);
         accessToken = serverResponseJSON.accessToken;
     } catch (err) {
-        accessTokenCalls++;
-        const backoff = Math.min(accessTokenBackoffCap, accessTokenBackoffBase * (2 ** accessTokenCalls));
+        accessTokenBackoff.calls++;
+        const backoff = Math.min(accessTokenBackoff.cap, accessTokenBackoff.base * (2 ** accessTokenBackoff.calls));
         const jitter = Math.random();
         const sleep = backoff * jitter;
         setTimeout(getAccessToken, sleep);
@@ -84,9 +87,11 @@ const getRequestToken = async (): Promise<string> => {
     return Promise.resolve(requestToken);
 };
 
-let fetchPkCalls: number = 0;
-const fetchPkBackoffBase: number = 50;
-const fetchPkBackoffCap: number = 15000;
+const publicKeyBackoff: backoffObject = {
+    calls: 0,
+    base: 50,
+    cap: 15000,
+};
 const fetchPublicKey = (): void => {
     getRequestToken()
         .then(requestToken => {
@@ -114,8 +119,8 @@ const fetchPublicKey = (): void => {
                         })
                         .catch(err => {
                             console.error(err);
-                            fetchPkCalls++;
-                            const backoff = Math.min(fetchPkBackoffCap, fetchPkBackoffBase * (2 ** fetchPkCalls));
+                            publicKeyBackoff.calls++;
+                            const backoff = Math.min(publicKeyBackoff.cap, publicKeyBackoff.base * (2 ** publicKeyBackoff.calls));
                             const jitter = Math.random();
                             const sleep = backoff * jitter;
                             console.log(`Retrying Public Key fetch, sleep: ${sleep}`);
@@ -125,9 +130,11 @@ const fetchPublicKey = (): void => {
         });
 };
 
-let fetchDatabaseCalls: number = 0;
-const fetchDatabaseBackoffBase: number = 50;
-const fetchDatabaseBackoffCap: number = 15000;
+const databaseBackoff: backoffObject = {
+    calls: 0,
+    base: 50,
+    cap: 15000,
+};
 const fetchDatabase = () => {
     getRequestToken()
         .then(requestToken => {
@@ -145,7 +152,6 @@ const fetchDatabase = () => {
                             imageFilters = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             votedImages = result.userVotes;
-                            console.log(votedImages);
                             browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
                             browser.tabs.query({})
                                 .then(tabs => {
@@ -157,8 +163,8 @@ const fetchDatabase = () => {
                         })
                         .catch(err => {
                             console.error(err);
-                            fetchDatabaseCalls++;
-                            const backoff = Math.min(fetchDatabaseBackoffCap, fetchDatabaseBackoffBase * (2 ** fetchDatabaseCalls));
+                            databaseBackoff.calls++;
+                            const backoff = Math.min(databaseBackoff.cap, databaseBackoff.base * (2 ** databaseBackoff.calls));
                             const jitter = Math.random();
                             const sleep = backoff * jitter;
                             setTimeout(fetchDatabase, sleep);
@@ -337,9 +343,12 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
 
 const handleSetting = async (message: browserMessage) => {
     const { [message.data.content.setting]: value } = await browser.storage.local.get();
+
+    const { extensionOn } = await browser.storage.local.get();
     browser.contextMenus.update("gvp-report-image", {
-        enabled: !value,
+        enabled: (message.data.content.setting === "extensionOn") ? !extensionOn : extensionOn,
     });
+
     browser.storage.local.set({ [message.data.content.setting]: !value });
     browser.tabs.query({})
         .then(tabs => {
