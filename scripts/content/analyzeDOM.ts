@@ -88,17 +88,10 @@ const revealImage = (event: Event): void => {
     event.preventDefault();
     const targetImageIdentifier = (event.target as HTMLImageElement).getAttribute("src-identifier");
     const canvasSrc = (event.target as HTMLImageElement).src;
-    let targetImageSrc: string = "";
-    for (const image of blockedImagesSet) {
-        if (image.recoverID === Number(targetImageIdentifier)) {
-            targetImageSrc = image.blockedSource;
-            break;
-        }
-    }
     if (document.getElementById("gvp-reveal-image")) {
         return;
     }
-    console.log(`Image SRC : ${targetImageSrc}`);
+
     const recoverID = targetImageIdentifier;
     let targetImage: Element;
     for (const image of document.querySelectorAll(`img[src="${canvasSrc}"]`)) {
@@ -107,11 +100,12 @@ const revealImage = (event: Event): void => {
             break;
         }
     }
-    console.log(votedImages);
     const revealImageDiv: HTMLDivElement = document.createElement("div");
     const revealImageStyle: HTMLStyleElement = document.createElement("style");
     revealImageDiv.innerHTML = revealImageHTMLString;
     revealImageStyle.innerHTML = revealImageStyleString;
+    const shadowRoot: HTMLDivElement = document.createElement("div");
+    shadowRoot.id = "gvp-shadow-root";
     blockedImagesSet.forEach(image => {
         if (image.recoverID === Number(recoverID)) {
             const reportID: number = Number(targetImage.getAttribute("gvp-report-id"));
@@ -120,70 +114,72 @@ const revealImage = (event: Event): void => {
             const tagsObject = JSON.parse(image.tags);
             const imageTagArray: string[] = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => key);
             const imageTags = imageTagArray.join(", ");
-            document.body.appendChild(revealImageDiv);
-            document.head.appendChild(revealImageStyle);
-            document.getElementById("gvp-image-preview-tags")!.textContent = `${imageTags}`;
-            document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
-            if (reportedByUser || votedImages.includes(imageSource) || !votingEnabled) {
-                document.getElementById("gvp-user-feedback")?.remove();
-            }
-            (document.getElementById("gvp-image-preview") as HTMLImageElement).src = image.blockedSource;
-            const positiveCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-positive-checkbox");
-            const negativeCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-negative-checkbox");
-            const userVotes: tagCheckboxes = new tagCheckboxes();
-
-            positiveCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener("click", () => {
-                    const tagString: string = checkbox.id.split("-").at(3)!;
-                    userVotes[tagString].checkedPositive = !(userVotes[tagString].checkedPositive);
-                    (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedPositive) ? "rgb(12, 145, 0)" : "transparent";
-                    if (userVotes[tagString].checkedPositive) {
-                        userVotes[tagString].checkedNegative = false;
-                        document.getElementById(`gvp-negative-checkbox-${tagString}`)!.style.backgroundColor = "transparent";
-                    }
-                    userVotes[tagString].tagValue = (Number(userVotes[tagString].checkedNegative) ^ Number(userVotes[tagString].checkedPositive)) - (Number(userVotes[tagString].checkedNegative) << 1);
-                });
-            });
-            negativeCheckboxes.forEach(checkbox => {
-                const tag = checkbox.id.split("-").at(3)!;
-                if (imageTags.includes(tag)) {
+            document.body.appendChild(shadowRoot);
+            const shadowDOM = document.getElementById("gvp-shadow-root")?.attachShadow({ mode: "open" });
+            if (shadowDOM) {
+                shadowDOM.append(revealImageDiv);
+                shadowDOM.append(revealImageStyle);
+                shadowDOM.getElementById("gvp-image-preview-tags")!.textContent = `${imageTags}`;
+                shadowDOM.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
+                if (reportedByUser || votedImages.includes(imageSource) || !votingEnabled) {
+                    shadowDOM.getElementById("gvp-user-feedback")?.remove();
+                }
+                (shadowDOM.getElementById("gvp-image-preview") as HTMLImageElement).src = image.blockedSource;
+                const positiveCheckboxes: NodeListOf<Element> = shadowDOM.querySelectorAll(".gvp-positive-checkbox");
+                const negativeCheckboxes: NodeListOf<Element> = shadowDOM.querySelectorAll(".gvp-negative-checkbox");
+                const userVotes: tagCheckboxes = new tagCheckboxes();
+                positiveCheckboxes.forEach(checkbox => {
                     checkbox.addEventListener("click", () => {
-                        userVotes[tag].checkedNegative = !(userVotes[tag].checkedNegative);
-                        (checkbox as HTMLElement).style.backgroundColor = (userVotes[tag].checkedNegative) ? "rgb(179, 0, 0)" : "transparent";
-                        if (userVotes[tag].checkedNegative) {
-                            userVotes[tag].checkedPositive = false;
-                            document.getElementById(`gvp-positive-checkbox-${tag}`)!.style.backgroundColor = "transparent";
+                        const tagString: string = checkbox.id.split("-").at(3)!;
+                        userVotes[tagString].checkedPositive = !(userVotes[tagString].checkedPositive);
+                        (checkbox as HTMLElement).style.backgroundColor = (userVotes[tagString].checkedPositive) ? "rgb(12, 145, 0)" : "transparent";
+                        if (userVotes[tagString].checkedPositive) {
+                            userVotes[tagString].checkedNegative = false;
+                            shadowDOM.getElementById(`gvp-negative-checkbox-${tagString}`)!.style.backgroundColor = "transparent";
                         }
-                        userVotes[tag].tagValue = (Number(userVotes[tag].checkedNegative) ^ Number(userVotes[tag].checkedPositive)) - (Number(userVotes[tag].checkedNegative) << 1);
+                        userVotes[tagString].tagValue = (Number(userVotes[tagString].checkedNegative) ^ Number(userVotes[tagString].checkedPositive)) - (Number(userVotes[tagString].checkedNegative) << 1);
                     });
-                    return;
-                }
-                (checkbox as HTMLElement).style.cursor = "not-allowed";
-            });
-
-            document.getElementById("gvp-noreveal-button")?.addEventListener("click", () => {
-                document.getElementById("gvp-background")?.remove();
-                if (reportID !== 0 && !reportedByUser) {
-                    sendFeedback(userVotes, reportID);
-                }
-            });
-            document.getElementById("gvp-reveal-button")?.addEventListener("click", () => {
-                const whitelistCheckbox = document.getElementById("gvp-whitelist-checkbox")!;
-                (targetImage as HTMLImageElement).src = image.blockedSource;
-                document.getElementById("gvp-background")?.remove();
-                skippedSources.add(image.blockedSource);
-                targetImage.removeEventListener("click", revealImage);
-                if (reportID !== 0 && !reportedByUser) {
-                    sendFeedback(userVotes, reportID);
-                }
-                browser.runtime.sendMessage({ action: Action.revealed_image, data: { content: { whitelist: (whitelistCheckbox as HTMLInputElement).checked, source: imageSource, base64src: image.blockedSource } } });
-            });
-            document.getElementById("gvp-reveal-preview")!.addEventListener("click", () => {
-                document.getElementById("gvp-image-preview")!.style.filter = "none";
-            });
-            document.getElementById("gvp-close-reveal")?.addEventListener("click", () => {
-                document.getElementById("gvp-background")?.remove();
-            });
+                });
+                negativeCheckboxes.forEach(checkbox => {
+                    const tag = checkbox.id.split("-").at(3)!;
+                    if (imageTags.includes(tag)) {
+                        checkbox.addEventListener("click", () => {
+                            userVotes[tag].checkedNegative = !(userVotes[tag].checkedNegative);
+                            (checkbox as HTMLElement).style.backgroundColor = (userVotes[tag].checkedNegative) ? "rgb(179, 0, 0)" : "transparent";
+                            if (userVotes[tag].checkedNegative) {
+                                userVotes[tag].checkedPositive = false;
+                                shadowDOM.getElementById(`gvp-positive-checkbox-${tag}`)!.style.backgroundColor = "transparent";
+                            }
+                            userVotes[tag].tagValue = (Number(userVotes[tag].checkedNegative) ^ Number(userVotes[tag].checkedPositive)) - (Number(userVotes[tag].checkedNegative) << 1);
+                        });
+                        return;
+                    }
+                    (checkbox as HTMLElement).style.cursor = "not-allowed";
+                });
+                shadowDOM.getElementById("gvp-noreveal-button")?.addEventListener("click", () => {
+                    document.getElementById("gvp-shadow-root")?.remove();
+                    if (reportID !== 0 && !reportedByUser) {
+                        sendFeedback(userVotes, reportID);
+                    }
+                });
+                shadowDOM.getElementById("gvp-reveal-button")?.addEventListener("click", () => {
+                    const whitelistCheckbox = shadowDOM.getElementById("gvp-whitelist-checkbox")!;
+                    (targetImage as HTMLImageElement).src = image.blockedSource;
+                    document.getElementById("gvp-shadow-root")?.remove();
+                    skippedSources.add(image.blockedSource);
+                    targetImage.removeEventListener("click", revealImage);
+                    if (reportID !== 0 && !reportedByUser) {
+                        sendFeedback(userVotes, reportID);
+                    }
+                    browser.runtime.sendMessage({ action: Action.revealed_image, data: { content: { whitelist: (whitelistCheckbox as HTMLInputElement).checked, source: imageSource, base64src: image.blockedSource } } });
+                });
+                shadowDOM.getElementById("gvp-reveal-preview")!.addEventListener("click", () => {
+                    shadowDOM.getElementById("gvp-image-preview")!.style.filter = "none";
+                });
+                shadowDOM.getElementById("gvp-close-reveal")?.addEventListener("click", () => {
+                    document.getElementById("gvp-shadow-root")?.remove();
+                });
+            }
         }
     });
 };
@@ -267,7 +263,6 @@ const setupStorage = (message: browserMessage) => {
         localWhitelist = (localWhitelist as whitelistedImage[]).map(image => image.source);
     }
     imageWhitelist = message.data.content.sessionWhitelist.concat(localWhitelist);
-    console.log(`Image whitelist: ${imageWhitelist}`);
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };
 
@@ -279,19 +274,6 @@ const fetchStorage = () => {
 //
 
 // Report system
-
-const makeReport = (reportData: reportObject): void => {
-    const selectedTags: string[] = [];
-    checkboxesTagsId.forEach(tag => {
-        const checkbox: HTMLInputElement = document.getElementById(`${tag}`) as HTMLInputElement;
-        if (checkbox.checked) {
-            selectedTags.push(tag.split("-").at(1)!);
-        }
-    });
-    reportData.tags = selectedTags;
-    sendData(reportData, "report");
-    document.getElementById("gvp-background")?.remove();
-};
 
 const reportImage = (message: browserMessage): void => {
     const imageSourceBase64: string = message.data.content.base64src;
@@ -313,37 +295,52 @@ const reportImage = (message: browserMessage): void => {
     }
     const reportDiv: HTMLDivElement = document.createElement("div");
     const reportStyle: HTMLStyleElement = document.createElement("style");
+    const shadowRoot: HTMLDivElement = document.createElement("div");
+    shadowRoot.id = "gvp-shadow-root";
     reportStyle.innerHTML = message.data.content.reportCSS;
     reportDiv.innerHTML = message.data.content.reportHTML;
-    document.head.appendChild(reportStyle);
-    document.body.appendChild(reportDiv);
-    document.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
-    (document.getElementById("gvp-report-preview-image") as HTMLImageElement)!.src = imageSourceBase64;
-    const reportData: reportObject = {
-        src: message.data.content.src,
-        userID: "",
-        tags: [],
-        timeStamp: new Date().toISOString(),
-    };
-    let checkboxCounter: number = 0;
-    (document.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = true;
-    const reportCheckboxes: NodeListOf<Element> = document.querySelectorAll(".gvp-checkbox");
-    reportCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener("change", (event) => {
-            const checkBoxValue = ((event.target as HTMLInputElement).checked ? 1 : -1);
-            checkboxCounter += checkBoxValue;
-            (document.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = checkboxCounter < 1;
+    document.body.appendChild(shadowRoot);
+    const shadowDOM = document.getElementById("gvp-shadow-root")?.attachShadow({ mode: "open" });
+    if (shadowDOM) {
+        shadowDOM.appendChild(reportDiv);
+        shadowDOM.appendChild(reportStyle);
+        shadowDOM.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
+        (shadowDOM.getElementById("gvp-report-preview-image") as HTMLImageElement)!.src = imageSourceBase64;
+        const reportData: reportObject = {
+            src: message.data.content.src,
+            userID: "",
+            tags: [],
+            timeStamp: new Date().toISOString(),
+        };
+        let checkboxCounter: number = 0;
+        (shadowDOM.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = true;
+        const reportCheckboxes: NodeListOf<Element> = shadowDOM.querySelectorAll(".gvp-checkbox");
+        reportCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener("change", (event) => {
+                const checkBoxValue = ((event.target as HTMLInputElement).checked ? 1 : -1);
+                checkboxCounter += checkBoxValue;
+                (shadowDOM.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = checkboxCounter < 1;
+            });
         });
-    });
-    document.getElementById("gvp-close-report")?.addEventListener("click", () => {
-        document.getElementById("gvp-background")?.remove();
-    });
-    document.getElementById("gvp-cancel-report")?.addEventListener("click", () => {
-        document.getElementById("gvp-background")?.remove();
-    });
-    document.getElementById("gvp-submit-button")?.addEventListener("click", () => {
-        makeReport(reportData);
-    });
+        shadowDOM.getElementById("gvp-close-report")?.addEventListener("click", () => {
+            document.getElementById("gvp-shadow-root")?.remove();
+        });
+        shadowDOM.getElementById("gvp-cancel-report")?.addEventListener("click", () => {
+            document.getElementById("gvp-shadow-root")?.remove();
+        });
+        shadowDOM.getElementById("gvp-submit-button")?.addEventListener("click", () => {
+            const selectedTags: string[] = [];
+            checkboxesTagsId.forEach(tag => {
+                const checkbox: HTMLInputElement = shadowDOM.getElementById(`${tag}`) as HTMLInputElement;
+                if (checkbox.checked) {
+                    selectedTags.push(tag.split("-").at(1)!);
+                }
+            });
+            reportData.tags = selectedTags;
+            sendData(reportData, "report");
+            document.getElementById("gvp-shadow-root")?.remove();
+        });
+    }
 };
 
 const updateReportedImages = (message: browserMessage) => {
