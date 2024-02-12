@@ -93,8 +93,3 @@ export type whitelistedImage = {
     source: string,
     thumbnail: string,
 };
-
-export type failedRequest = {
-    data: feedbackObject | reportObject,
-    route: string,
-};
