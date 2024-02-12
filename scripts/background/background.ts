@@ -1,5 +1,5 @@
 import { filterToken } from "../tools/token";
-import { githubResponse, reportObject, HTMLResources, fallbackResources, imageFilter, failedRequest, feedbackObject, whitelistedImage, backoffObject } from "../tools/interfaces";
+import { githubResponse, reportObject, HTMLResources, fallbackResources, imageFilter, feedbackObject, whitelistedImage, backoffObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { stringToArrayBuffer, clearPEMFormat, encryptData } from "./encryption";
@@ -155,7 +155,6 @@ const fetchDatabase = () => {
                             browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
                             browser.tabs.query({})
                                 .then(tabs => {
-                                    console.log(tabs);
                                     tabs.forEach(tab => {
                                         browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages, votedImages: votedImages, imageFilters: imageFilters } } });
                                     });
@@ -210,7 +209,6 @@ browser.runtime.onInstalled.addListener(() => {
                     gvpRevealImageHTML: fetchedHTMLResources.gvpRevealImageHTML,
                     gvpRevealImageCSS: fetchedHTMLResources.gvpRevealImageCSS,
                 },
-                requestQueue: [] as failedRequest[],
             });
         });
 });
@@ -269,16 +267,6 @@ const sendResources = async (message: browserMessage, sender: browser.runtime.Me
 
 };
 
-const updateRequestQueue = async (message: browserMessage): Promise<void> => {
-    const storageQueue = await browser.storage.local.get("requestQueue");
-    const requestQueue = storageQueue["requestQueue"];
-    const tabQueue: failedRequest[] = message.data.content.requestQueue;
-    tabQueue.forEach(request => {
-        requestQueue.push(request);
-    });
-    browser.storage.local.set({ requestQueue: requestQueue });
-};
-
 const bufferEncode = async (buffer: Uint8Array) => {
     let base64url: string | ArrayBuffer | null = await new Promise(executor => {
         const reader = new FileReader();
@@ -306,38 +294,30 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
         })
         .then(() => getRequestToken())
         .then((requestToken) => {
-            browser.storage.local.get()
-                .then((localStorage) => {
-                    const requestQueue: failedRequest[] = localStorage["requestQueue"];
-                    if (!publicKey) {
-                        browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
-                        requestQueue.push({ data: requestData, route: route });
-                        browser.storage.local.set({ requestQueue: requestQueue });
-                    }
-                    encryptData(JSON.stringify(requestData), publicKey)
-                        .then(encryptedData => {
-                            const cipherText = new Uint8Array(encryptedData);
-                            bufferEncode(cipherText)
-                                .then(encodedCipher => {
-                                    fetch(`http://localhost:7070/${route}`, {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                            "auth": requestToken,
-                                        },
-                                        body: JSON.stringify({ data: encodedCipher }),
-                                    }).then(response => {
-                                        console.log(`Request status: ${response.status}`);
-                                        fetchDatabase();
-                                    }).catch((error) => {
-                                        console.error(error);
-                                        browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server\nAdded request into failed requests queue." } } });
-                                        requestQueue.push({ data: requestData, route: route });
-                                        browser.storage.local.set({ requestQueue: requestQueue });
-                                    });
-                                });
-                        }).catch(error => console.error(`Encryption error: ${error}`));
-                });
+            if (!publicKey) {
+                browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
+            }
+            encryptData(JSON.stringify(requestData), publicKey)
+                .then(encryptedData => {
+                    const cipherText = new Uint8Array(encryptedData);
+                    bufferEncode(cipherText)
+                        .then(encodedCipher => {
+                            fetch(`http://localhost:7070/${route}`, {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "auth": requestToken,
+                                },
+                                body: JSON.stringify({ data: encodedCipher }),
+                            }).then(response => {
+                                console.log(`Request status: ${response.status}`);
+                                fetchDatabase();
+                            }).catch((error) => {
+                                console.error(error);
+                                browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server.\n" } } });
+                            });
+                        });
+                }).catch(error => console.error(`Encryption error: ${error}`));
         });
 };
 
@@ -378,7 +358,6 @@ const updateRevealedImages = async (message: browserMessage) => {
 
 const messageMap = new messagingMap([
     [Action.get_resources, sendResources],
-    [Action.update_report_queue, updateRequestQueue],
     [Action.make_request, makeRequest],
     [Action.setting, handleSetting],
     [Action.update_blocked_images, updateBlockedImages],
