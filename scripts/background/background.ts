@@ -2,6 +2,7 @@ import { reportObject, imageFilter, feedbackObject, whitelistedImage, backoffObj
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { stringToArrayBuffer, clearPEMFormat, encryptData } from "./encryption";
+import { tagsLookup } from "../content/tags";
 import { v4 as uuidv4 } from "uuid";
 import makeThumbnail from "./makethumbnail";
 import gvpReportHTML from "../../htmlresources/gvp-report.txt";
@@ -136,6 +137,7 @@ const fetchDatabase = () => {
                         .then(result => {
                             imageFilters = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
+                            console.log(imageFilters);
                             votedImages = result.userVotes;
                             browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
                             browser.tabs.query({})
@@ -170,6 +172,16 @@ browser.runtime.onInstalled.addListener(() => {
         extensionOn: true,
         votingEnabled: true,
         blockedImagesAmount: 0,
+        hatespeech: true,
+        extremism: true,
+        misinformation: true,
+        offensivehumor: true,
+        sexualcontent: true,
+        harassment: true,
+        gore: true,
+        drugs: true,
+        selfharm: true,
+        shockingcontent: true,
     });
 });
 
@@ -182,6 +194,7 @@ browser.runtime.onInstalled.addListener(() => {
 const sendResources = async (message: browserMessage, sender: browser.runtime.MessageSender) => {
     const senderId = sender.tab!.id!;
     const localStorage = await browser.storage.local.get();
+    const tagSettings: string[] = tagsLookup.filter(tag => !localStorage[tag]);
     const { sessionWhitelistedImages } = await browser.storage.session.get();
     browser.tabs.sendMessage(senderId, {
         action: Action.send_resources,
@@ -198,6 +211,7 @@ const sendResources = async (message: browserMessage, sender: browser.runtime.Me
                 votingEnabled: localStorage.votingEnabled,
                 localWhitelist: localStorage.whitelistedImages,
                 sessionWhitelist: sessionWhitelistedImages,
+                tagSettings: tagSettings,
             },
         },
     });
@@ -274,6 +288,12 @@ const handleSetting = async (message: browserMessage) => {
         });
 };
 
+const handleTagSetting = async (message: browserMessage) => {
+    const targetTag: string = message.data.content.tag;
+    const { [targetTag]: currentValue } = await browser.storage.local.get();
+    browser.storage.local.set({ [targetTag]: !currentValue });
+};
+
 const updateBlockedImages = async () => {
     const { blockedImagesAmount } = await browser.storage.local.get();
     browser.storage.local.set({ blockedImagesAmount: blockedImagesAmount + 1 });
@@ -298,6 +318,7 @@ const messageMap = new messagingMap([
     [Action.setting, handleSetting],
     [Action.update_blocked_images, updateBlockedImages],
     [Action.revealed_image, updateRevealedImages],
+    [Action.setting_tag, handleTagSetting],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
@@ -325,7 +346,6 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                     const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
                     browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
                         content: {
-                            reportedImages: reportedImages,
                             src: reportedSrc,
                             userID: userID,
                             reportCSS: gvpReportCSS,

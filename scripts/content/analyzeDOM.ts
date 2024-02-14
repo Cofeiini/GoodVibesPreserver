@@ -2,7 +2,7 @@ import SparkMD5 from "spark-md5";
 import { reportObject, imageFilter, tagCheckboxes, feedbackObject, whitelistedImage } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import { generateFilteredImage } from "./filtercanvas";
-import { checkboxesTagsId, tagsLookup } from "./tags";
+import { checkboxesTagsId, tagsDisplayText, tagsLookup } from "./tags";
 import { maxZIndex, getMaxZIndex } from "./maxzindex";
 
 // HTML Resources
@@ -20,6 +20,7 @@ let votedImages: string[] = []; // Stores report_ID of images that the user gave
 let extensionOn: boolean = true;
 let votingEnabled: boolean = true;
 let imageWhitelist: string[] = [];
+let ignoredTags: string[] = [];
 const canvasSources: string[] = [];
 
 // GVP notification
@@ -44,7 +45,7 @@ const makeNotification = (notificationText: string): void => {
     shadowDOM.getElementById("gvp-notification")!.style.zIndex = maxZIndex.toString();
     shadowDOM.getElementById("gvp-notification-text")!.innerText = notificationText;
     shadowDOM.getElementById("gvp-close-notification")?.addEventListener("click", () => {
-        document.getElementById("gvp-notificaiton-shadow-root")?.remove();
+        document.getElementById("gvp-notification-shadow-root")?.remove();
     });
 
     notificationTimeout = setTimeout(() => {
@@ -116,7 +117,7 @@ const revealImage = (event: Event): void => {
             const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
             const reportedByUser: boolean = reportedImages.some(report => report.source === imageSource);
             const tagsObject = JSON.parse(image.tags);
-            const imageTagArray: string[] = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => key);
+            const imageTagArray: string[] = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => tagsDisplayText.get(key)!);
             const imageTags = imageTagArray.join(", ");
             document.body.appendChild(shadowRoot);
             const shadowDOM = (shadowRoot as HTMLElement).attachShadow({ mode: "open" });
@@ -217,7 +218,18 @@ const filterImage = (image: HTMLImageElement): void => {
             reportID = matchImage.id;
         }
     }
+
+    if (imageTags) {
+        const tagsObject = JSON.parse(imageTags);
+        const imageTagArray: string[] = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => key);
+        const isIgnored = (tag: string) => ignoredTags.includes(tag);
+        if (imageTagArray.every(isIgnored)) {
+            return;
+        }
+    }
+
     if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (isReported || isInFilters) && !imageWhitelist.includes(imageSource)) {
+        console.log(imageTags);
         const filteredImage = generateFilteredImage(imageWidth, imageHeight);
         canvasSources.push(SparkMD5.hash(filteredImage));
         blockedImagesCounter++;
@@ -260,6 +272,7 @@ const setupStorage = (message: browserMessage) => {
     votedImages = message.data.content.votedImages;
     extensionOn = message.data.content.extensionOn;
     votingEnabled = message.data.content.votingEnabled;
+    ignoredTags = message.data.content.tagSettings;
     let localWhitelist = message.data.content.localWhitelist;
     if (localWhitelist) {
         localWhitelist = (localWhitelist as whitelistedImage[]).map(image => image.source);
@@ -285,8 +298,7 @@ const reportImage = (message: browserMessage): void => {
         return;
     }
     const reportedImage: HTMLImageElement | null = document.querySelector(`img[src="${imageSourceBase64}"]`);
-    reportedImages = message.data.content.reportedImages;
-    const isReported = reportedImages.some(report => report.source === imageSource);
+    const isReported = imageFilters.some(report => report.source === imageSource);
     const isVoted = votedImages.includes(imageSource);
     if (reportedImage?.getAttribute("src-identifier") || isReported || isVoted || imageWhitelist.includes(imageSource)) {
         makeNotification("This image has been reported already.");

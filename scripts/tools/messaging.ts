@@ -12,6 +12,7 @@ export enum Action {
     get_blocked_images_amount,
     revealed_image,
     update_settings,
+    setting_tag,
 }
 
 export type browserMessage = {
