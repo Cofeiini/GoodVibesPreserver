@@ -44,7 +44,7 @@
   "content_scripts": [
     {
       "matches": ["*://*/*"],
-      "js": ["scripts/content/analyzeDOM.js"]
+      "js": ["scripts/content/content.js"]
     }
   ]
 }
