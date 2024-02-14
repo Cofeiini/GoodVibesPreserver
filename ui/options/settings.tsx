@@ -9,7 +9,7 @@ const CustomCheckbox = ({ settingName }: { settingName: string }) => {
             setIsChecked(value);
         };
         getSettingStatus();
-    });
+    }, []);
     return (
         <div className="custom-checkbox" style={{ backgroundColor: isChecked ? "rgb(210,210,210)" : "rgb(40,40,40)" }} onClick={() => {
             browser.runtime.sendMessage({ action: Action.setting, data: { content: { setting: settingName } } });
@@ -17,7 +17,8 @@ const CustomCheckbox = ({ settingName }: { settingName: string }) => {
         }}>
             <div className="checkbox-indicator" style={{
                 transform: isChecked ? "translateX(40px)" : "translateX(0)",
-            }}></div>
+            }}>
+            </div>
         </div>
     );
 };
@@ -25,12 +26,11 @@ const CustomCheckbox = ({ settingName }: { settingName: string }) => {
 const Setting = ({ settingName, settingText }: { settingName: string, settingText: string }) => {
     return (
         <>
-            <hr></hr>
+            <hr/>
             <div className="setting">
                 <label>{ settingText }</label>
                 <CustomCheckbox settingName={ settingName }/>
             </div>
-            <hr></hr>
         </>
     );
 };
@@ -40,7 +40,7 @@ export const SettingsSection = () => {
         <div className="settings-content">
             <h1 className="settings-title">Settings</h1>
             <div className="settings-list">
-                <Setting settingName="extensionOn" settingText="Turn Off/On"/>
+                <Setting settingName="extensionOn" settingText="Turn Extension Off/On"/>
                 <Setting settingName="votingEnabled" settingText="Disable/Enable Voting"/>
             </div>
         </div>

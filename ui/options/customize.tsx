@@ -1,5 +1,4 @@
 import * as React from "react";
-import * as ReactDOM from "react-dom";
 import { whitelistedImage } from "../../scripts/tools/interfaces";
 import { Action } from "../../scripts/tools/messaging";
 import { tagsLookup, tagsDisplayText } from "../../scripts/content/tags";
@@ -26,7 +25,7 @@ const TagCheckbox = ({ tagName }: { tagName: string }) => {
     React.useEffect(() => {
         const getSettingStatus = async () => {
             const { [tagName]: value } = await browser.storage.local.get();
-            setIsChecked(value);
+            setIsChecked(!value);
         };
         getSettingStatus();
     }, []);
@@ -45,10 +44,13 @@ const TagCheckbox = ({ tagName }: { tagName: string }) => {
 
 const Tag = ({ tagName }: { tagName: string }) => {
     return (
-        <div className="tag">
-            <label className="setting-text">{ tagsDisplayText.get(tagName) }</label>
-            <TagCheckbox tagName={ tagName }/>
-        </div>
+        <>
+            <hr/>
+            <div className="tag">
+                <label className="setting-text">{ tagsDisplayText.get(tagName) }</label>
+                <TagCheckbox tagName={ tagName }/>
+            </div>
+        </>
     );
 };
 
@@ -63,7 +65,7 @@ const CustomizeSection = () => {
     return (
         <div className="customize-section">
             <div className="select-tags">
-                <label className="whitelist-title"></label>
+                <label className="whitelist-title">Whitelist Tags</label>
                 <div className="tags">
                     {
                         tagsLookup.map(tag => <Tag tagName={ tag } key={ tag }/>)
@@ -72,7 +74,7 @@ const CustomizeSection = () => {
             </div>
             { whitelistedImages.length > 0 &&
                 <div className="whitelist-elements">
-                    <label className="whitelist-title">Whitelist</label>
+                    <label className="whitelist-title">Whitelisted Images</label>
                     {
                         (whitelistedImages as whitelistedImage[]).map((image: whitelistedImage) => (
                             <WhitelistElement thumbnail={ image.thumbnail } source={ image.source } setWhitelistedImages={ setWhitelistedImages }/>

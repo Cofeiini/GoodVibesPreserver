@@ -1,5 +1,4 @@
 import * as React from "react";
-import * as ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import { SettingsSection } from "./settings";
 import optionsIcon from "../../assets/options-settings-icon.svg";
@@ -8,7 +7,9 @@ import privacyIcon from "../../assets/privacy-icon.svg";
 import customizeIcon from "../../assets/customize-icon.svg";
 import githubIcon from "../../assets/github-icon.svg";
 import contactIcon from "../../assets/contact-icon.svg";
-import { CustomizeSection } from "./customize";
+import CustomizeSection from "./customize";
+import PrivacySection from "./privacy";
+import HelpSection from "./help";
 
 interface menuItems {
     settings: boolean,
@@ -16,22 +17,6 @@ interface menuItems {
     privacy: boolean,
     customize: boolean,
 }
-
-const PrivacySection = () => {
-    return (
-        <div>
-            Privacy;
-        </div>
-    );
-};
-
-const HelpSection = () => {
-    return (
-        <div>
-            Help;
-        </div>
-    );
-};
 
 const MenuItem = ({ itemName, itemIcon, isSelected, selectCallback }: { itemName: string, itemIcon: string, isSelected: boolean, selectCallback: CallableFunction }) => {
     const [isWrapped, setIsWrapped] = React.useState(true);
@@ -83,11 +68,13 @@ const Menu = ({ itemsState, selectCallback }: { itemsState: menuItems, selectCal
 };
 
 const OptionsPage = () => {
+    const params = new URLSearchParams(window.location.search);
+    const section = params.get("section");
     const [selectedItem, setSelectedItem] = React.useState({
-        settings: true,
-        help: false,
-        privacy: false,
-        customize: false,
+        settings: !section,
+        help: section === "Help",
+        privacy: section === "Privacy",
+        customize: section === "Customize",
     });
 
     const onSelect = (itemName: string) => {
