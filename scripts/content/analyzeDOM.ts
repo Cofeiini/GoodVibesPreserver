@@ -301,6 +301,7 @@ const reportImage = (message: browserMessage): void => {
     shadowRoot.id = "gvp-shadow-root";
     reportStyle.innerHTML = message.data.content.reportCSS;
     reportDiv.innerHTML = message.data.content.reportHTML;
+    console.log(message.data.content.reportHTML);
     document.body.appendChild(shadowRoot);
     const shadowDOM = (shadowRoot as HTMLElement).attachShadow({ mode: "open" });
     shadowDOM.appendChild(reportDiv);

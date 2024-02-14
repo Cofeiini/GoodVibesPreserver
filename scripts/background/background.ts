@@ -1,30 +1,15 @@
-import { filterToken } from "../tools/token";
-import { githubResponse, reportObject, HTMLResources, fallbackResources, imageFilter, feedbackObject, whitelistedImage, backoffObject } from "../tools/interfaces";
+import { reportObject, imageFilter, feedbackObject, whitelistedImage, backoffObject } from "../tools/interfaces";
 import { messagingMap, browserMessage, Action } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { stringToArrayBuffer, clearPEMFormat, encryptData } from "./encryption";
 import { v4 as uuidv4 } from "uuid";
 import makeThumbnail from "./makethumbnail";
-
-//
-
-const HTMLResourcesUrls: HTMLResources = {
-    gvpReportHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.html?ref=main",
-    gvpReportCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-report.css?ref=main",
-    gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
-    gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
-    gvpRevealImageHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.html?ref=main",
-    gvpRevealImageCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.css?ref=main",
-};
-
-const fallbackResources: fallbackResources = {
-    gvpNotificationCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.css?ref=main",
-    gvpNotificationHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-notification.html?ref=main",
-    gvpRevealImageHTML: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.html?ref=main",
-    gvpRevealImageCSS: "https://api.github.com/repos/Cofeiini/GoodVibesPreserver/contents/htmlresources/gvp-revealimage.css?ref=main",
-};
-
-//
+import gvpReportHTML from "../../htmlresources/gvp-report.txt";
+import gvpReportCSS from "../../htmlresources/gvp-report-style.txt";
+import gvpNotificationHTML from "../../htmlresources/gvp-notification.txt";
+import gvpNotificationCSS from "../../htmlresources/gvp-notification-style.txt";
+import gvpRevealImageHTML from "../../htmlresources/gvp-revealimage.txt";
+import gvpRevealImageCSS from "../../htmlresources/gvp-revealimage-style.txt";
 
 //
 
@@ -172,20 +157,6 @@ const fetchDatabase = () => {
         });
 };
 
-const fetchResources = async (resources: HTMLResources | fallbackResources): Promise<HTMLResources | fallbackResources> => {
-    const fetchedResources: HTMLResources | fallbackResources = resources;
-    for (const [key, value] of Object.entries(resources)) {
-        const response = await fetch(value, {
-            headers: {
-                Authorization: `${filterToken}`,
-            },
-        });
-        const responseJSON: githubResponse = await response.json();
-        fetchedResources[key] = atob(responseJSON.content);
-    }
-    return Promise.resolve(fetchedResources);
-};
-
 browser.runtime.onInstalled.addListener(() => {
     browser.storage.sync.get()
         .then(syncStorage => {
@@ -193,24 +164,13 @@ browser.runtime.onInstalled.addListener(() => {
                 browser.storage.sync.set({ userID: uuidv4() });
             }
         });
-    fetchResources(HTMLResourcesUrls)
-        .then((fetchedHTMLResources: HTMLResources | fallbackResources) => {
-            browser.storage.local.set({
-                whitelist: [] as string[],
-                whitelistedImages: [] as whitelistedImage[],
-                extensionOn: true,
-                votingEnabled: true,
-                blockedImagesAmount: 0,
-                documentResources: {
-                    gvpReportHTML: fetchedHTMLResources.gvpReportHTML,
-                    gvpReportCSS: fetchedHTMLResources.gvpReportCSS,
-                    gvpNotificationHTML: fetchedHTMLResources.gvpNotificationHTML,
-                    gvpNotificationCSS: fetchedHTMLResources.gvpNotificationCSS,
-                    gvpRevealImageHTML: fetchedHTMLResources.gvpRevealImageHTML,
-                    gvpRevealImageCSS: fetchedHTMLResources.gvpRevealImageCSS,
-                },
-            });
-        });
+    browser.storage.local.set({
+        whitelist: [] as string[],
+        whitelistedImages: [] as whitelistedImage[],
+        extensionOn: true,
+        votingEnabled: true,
+        blockedImagesAmount: 0,
+    });
 });
 
 //
@@ -223,37 +183,14 @@ const sendResources = async (message: browserMessage, sender: browser.runtime.Me
     const senderId = sender.tab!.id!;
     const localStorage = await browser.storage.local.get();
     const { sessionWhitelistedImages } = await browser.storage.session.get();
-    if (!localStorage.documentResources) {
-        const resources = await fetchResources(fallbackResources);
-        browser.tabs.sendMessage(senderId, {
-            action: Action.send_resources,
-            data: {
-                content: {
-                    notificationCSSString: resources.gvpNotificationCSS,
-                    notificationHTMLString: resources.gvpNotificationHTML,
-                    gvpRevealImageHTML: resources.gvpRevealImageHTML,
-                    gvpRevealImageCSS: resources.gvpRevealImageCSS,
-                    imageFilters: imageFilters,
-                    votedImages: votedImages,
-                    reportedImages: reportedImages,
-                    extensionOn: localStorage.extensionOn,
-                    votingEnabled: localStorage.votingEnabled,
-                    localWhitelist: localStorage.whitelistedImages,
-                    sessionWhitelist: sessionWhitelistedImages,
-                },
-            },
-        });
-        return;
-    }
-
     browser.tabs.sendMessage(senderId, {
         action: Action.send_resources,
         data: {
             content: {
-                notificationCSSString: localStorage.documentResources.gvpNotificationCSS,
-                notificationHTMLString: localStorage.documentResources.gvpNotificationHTML,
-                gvpRevealImageHTML: localStorage.documentResources.gvpRevealImageHTML,
-                gvpRevealImageCSS: localStorage.documentResources.gvpRevealImageCSS,
+                notificationCSSString: gvpNotificationCSS,
+                notificationHTMLString: gvpNotificationHTML,
+                gvpRevealImageHTML: gvpRevealImageHTML,
+                gvpRevealImageCSS: gvpRevealImageCSS,
                 imageFilters: imageFilters,
                 votedImages: votedImages,
                 reportedImages: reportedImages,
@@ -264,7 +201,6 @@ const sendResources = async (message: browserMessage, sender: browser.runtime.Me
             },
         },
     });
-
 };
 
 const bufferEncode = async (buffer: Uint8Array) => {
@@ -384,25 +320,20 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === "gvp-report-image") {
         getUserID()
             .then(userID => {
-                browser.storage.local.get()
-                    .then(localStorage => {
-                        if (info.srcUrl) {
-                            const resources: HTMLResources = localStorage.documentResources;
-                            console.log(localStorage);
-                            const tabId = tab!.id!;
-                            const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
-                            browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
-                                content: {
-                                    reportedImages: reportedImages,
-                                    src: reportedSrc,
-                                    userID: userID,
-                                    reportCSS: resources.gvpReportCSS,
-                                    reportHTML: resources.gvpReportHTML,
-                                    base64src: info.srcUrl,
-                                },
-                            } });
-                        }
-                    });
+                if (info.srcUrl) {
+                    const tabId = tab!.id!;
+                    const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
+                    browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
+                        content: {
+                            reportedImages: reportedImages,
+                            src: reportedSrc,
+                            userID: userID,
+                            reportCSS: gvpReportCSS,
+                            reportHTML: gvpReportHTML,
+                            base64src: info.srcUrl,
+                        },
+                    } });
+                }
             });
     }
 });
