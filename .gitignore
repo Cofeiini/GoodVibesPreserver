@@ -150,3 +150,6 @@ web-ext-artifacts/
 
 # Assets SVGs chunks
 ui/**/*.svg
+
+# Converted resource files
+htmlresources/**/*.txt
