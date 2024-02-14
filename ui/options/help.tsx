@@ -3,9 +3,9 @@ import * as React from "react";
 const HelpSection = () => {
     return (
         <div className="help-section">
-            <label className="help-title">Help</label>
+            <label className="title">Help</label>
             <div className="help-content">
-                <label className="help-sub-title">How to use the Good Vibes Preserver</label>
+                <label className="sub-title">How to use the Good Vibes Preserver</label>
                 <div className="help-items">
                     <hr/>
                     <div className="help-reporting">

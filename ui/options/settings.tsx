@@ -38,7 +38,7 @@ const Setting = ({ settingName, settingText }: { settingName: string, settingTex
 export const SettingsSection = () => {
     return (
         <div className="settings-content">
-            <h1 className="settings-title">Settings</h1>
+            <h1 className="title">Settings</h1>
             <div className="settings-list">
                 <Setting settingName="extensionOn" settingText="Turn Extension Off/On"/>
                 <Setting settingName="votingEnabled" settingText="Disable/Enable Voting"/>

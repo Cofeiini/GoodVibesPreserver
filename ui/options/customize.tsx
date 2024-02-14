@@ -64,9 +64,10 @@ const CustomizeSection = () => {
     }, []);
     return (
         <div className="customize-section">
+            <label className="title">Customize</label>
             <div className="select-tags">
-                <label className="whitelist-title">Whitelist Tags</label>
                 <div className="tags">
+                    <label className="sub-title">Whitelist Tags</label>
                     {
                         tagsLookup.map(tag => <Tag tagName={ tag } key={ tag }/>)
                     }
@@ -74,7 +75,7 @@ const CustomizeSection = () => {
             </div>
             { whitelistedImages.length > 0 &&
                 <div className="whitelist-elements">
-                    <label className="whitelist-title">Whitelisted Images</label>
+                    <label className="sub-title">Whitelisted Images</label>
                     {
                         (whitelistedImages as whitelistedImage[]).map((image: whitelistedImage) => (
                             <WhitelistElement thumbnail={ image.thumbnail } source={ image.source } setWhitelistedImages={ setWhitelistedImages }/>

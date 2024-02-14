@@ -167,10 +167,14 @@
         overflow-y: scroll;
     }
 
-    .settings-title {
+    .title {
         font-family: Arial, Helvetica, sans-serif;
         font-weight: bold;
         font-size: 40px;
+        box-shadow: 0 0 10px black;
+        padding: 20px;
+        border-radius: 80px;
+        width: fit-content;
     }
 
     .settings-content {
@@ -254,12 +258,6 @@
         padding: 20px 0px 20px 0px;
     }
 
-    .whitelist-title {
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: bold;
-        font-size: 40px;
-    }
-
     .whitelist-thumbnail {
         display: flex;
         justify-content: space-around;
@@ -299,42 +297,13 @@
         gap: 50px;
     }
 
-    .privacy-title {
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: bold;
-        font-size: 40px;
-    }
-
     .privacy-sub-section {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 20px;
     }
 
-    .privacy-sub-title {
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: bold;
-        font-size: 30px;
-    }
-
-    .privacy-section p {
-        font-size: 15px;
-        font-family: Arial, Helvetica, sans-serif;
-    }
-
-    .help-title {
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: bold;
-        font-size: 40px;
-    }
-    
-    .help-section {
-        display: flex;
-        flex-direction: column;
-        gap: 50px;
-    }
-
-    .help-sub-title {
+    .sub-title {
         font-family: Arial, Helvetica, sans-serif;
         font-weight: bold;
         font-size: 30px;
@@ -342,9 +311,20 @@
         background-color: rgb(20,20,20);
         box-shadow: 0 0 5px black;
         width: fit-content;
-        border-radius: 30px;
+        border-radius: 35px;
+        border: solid 2px grey;
     }
 
+    .privacy-section p {
+        font-size: 15px;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+    
+    .help-section {
+        display: flex;
+        flex-direction: column;
+        gap: 50px;
+    }
     .help-content {
         display: flex;
         flex-direction: column;
@@ -384,7 +364,8 @@
         background-color: rgb(20,20,20);
         box-shadow: 0 0 5px black;
         width: fit-content;
-        border-radius: 20px;
+        border-radius: 40px;
+        border: solid 2px grey;
     }
 
     @media screen and (max-width: 480px) {
