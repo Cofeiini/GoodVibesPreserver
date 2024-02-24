@@ -6,9 +6,13 @@ export enum Action {
     update_report_queue,
     update_voted_images,
     make_request,
-    get_voted_images,
-    reveal_image_prompt,
     make_notification,
+    setting,
+    update_blocked_images,
+    get_blocked_images_amount,
+    revealed_image,
+    update_settings,
+    setting_tag,
 }
 
 export type browserMessage = {

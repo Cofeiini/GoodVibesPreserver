@@ -10,6 +10,12 @@ export class tagInnerStructure {
     tagValue = 0;
 }
 
+export type backoffObject = {
+    calls: number,
+    base: number,
+    cap: number,
+};
+
 export class tagCheckboxes {
     [key: string]: tagInnerStructure;
     hatespeech = new tagInnerStructure();
@@ -83,7 +89,7 @@ export type reportObject = {
     timeStamp: string,
 };
 
-export type failedRequest = {
-    data: feedbackObject | reportObject,
-    route: string,
+export type whitelistedImage = {
+    source: string,
+    thumbnail: string,
 };

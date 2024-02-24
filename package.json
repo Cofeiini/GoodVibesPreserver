@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "Browser extension that blocks unpleasant content",
   "scripts": {
-    "build": "find ./scripts \\( -path \"./scripts/tools\" \\) -prune -o -iname \"*.ts\" -exec sh -c 'bun build \"{}\" --outfile \"${0%.*}\".js' {} ';'",
-    "dev": "bun run build && web-ext run --devtools",
+    "convert": "python convertresources.py",
+    "build": "find ./scripts \\( -path \"./scripts/tools\" \\) -prune -o -iname \"*.ts\" -exec sh -c 'bun build \"{}\" --outfile \"${0%.*}\".js' {} ';' && bun build ui/options/options.tsx ui/popup/popup.tsx --outdir ui --splitting",
+    "dev": "bun run convert && bun run build && web-ext run --devtools",
     "dev-update": "bun x npm-check-updates -u"
   },
   "keywords": [],
@@ -14,10 +15,14 @@
   ],
   "license": "ISC",
   "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "spark-md5": "^3.0.2",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
     "@stylistic/eslint-plugin": "^1.5.3",
     "@types/firefox": "^0.0.34",
     "@types/firefox-webext-browser": "^120.0.0",
@@ -27,8 +32,6 @@
     "@typescript-eslint/parser": "^6.17.0",
     "eslint": "^8.56.0",
     "ts-loader": "^9.5.1",
-    "web-ext": "^7.9.0",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4"
+    "web-ext": "^7.10.0"
   }
 }

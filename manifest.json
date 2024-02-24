@@ -5,14 +5,18 @@
   "description": "Extension meant to give the user a chill and nice experience while navigating the Internet",
 
   "icons": {
-    "48": "icons/icon.png"
+    "48": "assets/gvplogo.png"
   },
 
   "browser_action": {
     "default_icon": {
-      "48": "icons/icon.png"
+      "48": "assets/gvplogo.png"
     },
-    "default_popup": "popup/popup.html"
+    "default_popup": "ui/popup/popup.html"
+  },
+
+  "options_ui": {
+    "page": "ui/options/options.html"
   },
   
   "browser_specific_settings": {
@@ -40,7 +44,7 @@
   "content_scripts": [
     {
       "matches": ["*://*/*"],
-      "js": ["scripts/content/analyzeDOM.js"]
+      "js": ["scripts/content/content.js"]
     }
   ]
 }
