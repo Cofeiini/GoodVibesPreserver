@@ -91,6 +91,7 @@ const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
 
 const revealImage = (event: Event): void => {
     event.preventDefault();
+    event.stopPropagation();
     const targetImageIdentifier = (event.target as HTMLImageElement).getAttribute("src-identifier");
     const canvasSrc = (event.target as HTMLImageElement).src;
     if (document.getElementById("gvp-reveal-image")) {

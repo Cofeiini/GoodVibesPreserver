@@ -40,7 +40,7 @@ const accessTokenBackoff: backoffObject = {
 const getAccessToken = async (): Promise<void> => {
     try {
         const userID = await getUserID();
-        const serverResponse = await fetch("http://localhost:7070/globalToken", {
+        const serverResponse = await fetch("http://goodvibespreserver-2acc4db954fc.herokuapp.com/globalToken", {
             method: "GET",
             headers: {
                 userid: userID,
@@ -61,7 +61,7 @@ const getAccessToken = async (): Promise<void> => {
 
 const getRequestToken = async (): Promise<string> => {
     const userID = await getUserID();
-    const authResponse = await fetch("http://localhost:7070/requestToken", {
+    const authResponse = await fetch("http://goodvibespreserver-2acc4db954fc.herokuapp.com/requestToken", {
         method: "GET",
         headers: {
             userid: userID,
@@ -83,7 +83,7 @@ const fetchPublicKey = (): void => {
         .then(requestToken => {
             getUserID()
                 .then(userID => {
-                    fetch("http://localhost:7070/publickey", {
+                    fetch("http://goodvibespreserver-2acc4db954fc.herokuapp.com/publickey", {
                         method: "GET",
                         headers: {
                             userid: userID,
@@ -126,7 +126,7 @@ const fetchDatabase = () => {
         .then(requestToken => {
             getUserID()
                 .then(userID => {
-                    fetch("http://localhost:7070/getimagefilters", {
+                    fetch("http://goodvibespreserver-2acc4db954fc.herokuapp.com/getimagefilters", {
                         method: "GET",
                         headers: {
                             userid: userID,
@@ -252,7 +252,7 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
                     const cipherText = new Uint8Array(encryptedData);
                     bufferEncode(cipherText)
                         .then(encodedCipher => {
-                            fetch(`http://localhost:7070/${route}`, {
+                            fetch(`http://goodvibespreserver-2acc4db954fc.herokuapp.com/${route}`, {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json",
