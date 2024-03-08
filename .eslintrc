@@ -45,7 +45,7 @@
     "func-style": ["error", "expression", { "allowArrowFunctions": true }],
     "no-alert": "warn",
     "no-await-in-loop": "warn",
-    "no-console": "warn",
+    "no-console": ["warn", { "allow": ["error"] }],
     "no-constant-binary-expression": "warn",
     "no-constructor-return": "error",
     "no-div-regex": "warn",
