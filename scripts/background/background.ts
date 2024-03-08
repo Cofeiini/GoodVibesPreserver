@@ -28,7 +28,7 @@ const getUserID = async (): Promise<string> => {
         userID = uuidv4();
         browser.storage.sync.set({ userID: userID });
     }
-    return Promise.resolve(userID);
+    return userID;
 };
 
 const accessTokenBackoff: backoffObject = {
@@ -56,7 +56,6 @@ const getAccessToken = async (): Promise<void> => {
         const sleep = backoff * jitter;
         setTimeout(getAccessToken, sleep);
     }
-    return Promise.resolve();
 };
 
 const getRequestToken = async (): Promise<string> => {
@@ -70,7 +69,7 @@ const getRequestToken = async (): Promise<string> => {
     });
     const authResponseJSON = await authResponse.json();
     const requestToken = authResponseJSON.requestToken;
-    return Promise.resolve(requestToken);
+    return requestToken;
 };
 
 const publicKeyBackoff: backoffObject = {
@@ -109,7 +108,6 @@ const fetchPublicKey = (): void => {
                             const backoff = Math.min(publicKeyBackoff.cap, publicKeyBackoff.base * (2 ** publicKeyBackoff.calls));
                             const jitter = Math.random();
                             const sleep = backoff * jitter;
-                            console.log(`Retrying Public Key fetch, sleep: ${sleep}`);
                             setTimeout(fetchPublicKey, sleep);
                         });
                 });
@@ -137,7 +135,6 @@ const fetchDatabase = () => {
                         .then(result => {
                             imageFilters = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
                             reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
-                            console.log(imageFilters);
                             votedImages = result.userVotes;
                             browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
                             browser.tabs.query({})
@@ -241,11 +238,11 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
     getUserID()
         .then(userID => {
             requestData.userID = userID;
+            return getRequestToken();
         })
-        .then(() => getRequestToken())
         .then((requestToken) => {
             if (!publicKey) {
-                browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Missing public key\nFor security, the request will be stored and sent when the extension is able to fetch the public key." } } });
+                browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Error, please try again later.\n" } } });
             }
             encryptData(JSON.stringify(requestData), publicKey)
                 .then(encryptedData => {
@@ -259,8 +256,7 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
                                     "auth": requestToken,
                                 },
                                 body: JSON.stringify({ data: encodedCipher }),
-                            }).then(response => {
-                                console.log(`Request status: ${response.status}`);
+                            }).then(() => {
                                 fetchDatabase();
                             }).catch((error) => {
                                 console.error(error);
@@ -322,7 +318,6 @@ const messageMap = new messagingMap([
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {
-    console.log(`Requested Action: ${message.action}`);
     const requestedAction = messageMap.get(message.action);
     requestedAction(message, sender);
 });

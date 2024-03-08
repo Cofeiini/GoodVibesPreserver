@@ -230,7 +230,6 @@ const filterImage = (image: HTMLImageElement): void => {
     }
 
     if ((imageWidth > 48 || imageHeight > 48) && !skippedSources.has(image.src) && (isReported || isInFilters) && !imageWhitelist.includes(imageSource)) {
-        console.log(imageTags);
         const filteredImage = generateFilteredImage(imageWidth, imageHeight);
         canvasSources.push(SparkMD5.hash(filteredImage));
         blockedImagesCounter++;
@@ -243,7 +242,7 @@ const filterImage = (image: HTMLImageElement): void => {
     }
 };
 
-const analyzeDOM = (): void => {
+const analyzeDOM = () => {
     if (extensionOn) {
         const imgElements: NodeListOf<Element> = document.querySelectorAll("img");
         imgElements.forEach(image => {
@@ -308,24 +307,27 @@ const reportImage = (message: browserMessage): void => {
             isRecyclable = !Object.values(JSON.parse(targetImage.tags)).some(tagValue => tagValue === 1);
         }
     }
+
     if (isVoted) {
         makeNotification("Cannot report image that you have voted on.");
         return;
     }
+
     if ((reportedImage?.getAttribute("src-identifier") || isReported || imageWhitelist.includes(imageSource)) && !isRecyclable) {
         makeNotification("This image has been reported already.");
         return;
     }
+
     if (document.getElementById("gvp-alert") || document.getElementById("gvp-reveal-image")) {
         return;
     }
+
     const reportDiv: HTMLDivElement = document.createElement("div");
     const reportStyle: HTMLStyleElement = document.createElement("style");
     const shadowRoot: HTMLDivElement = document.createElement("div");
     shadowRoot.id = "gvp-shadow-root";
     reportStyle.innerHTML = message.data.content.reportCSS;
     reportDiv.innerHTML = message.data.content.reportHTML;
-    console.log(message.data.content.reportHTML);
     document.body.appendChild(shadowRoot);
     const shadowDOM = (shadowRoot as HTMLElement).attachShadow({ mode: "open" });
     shadowDOM.appendChild(reportDiv);
