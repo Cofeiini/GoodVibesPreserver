@@ -256,12 +256,14 @@ const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSen
                                     "auth": requestToken,
                                 },
                                 body: JSON.stringify({ data: encodedCipher }),
-                            }).then(() => {
-                                fetchDatabase();
-                            }).catch((error) => {
-                                console.error(error);
-                                browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server.\n" } } });
-                            });
+                            })
+                                .then(() => {
+                                    fetchDatabase();
+                                })
+                                .catch((error) => {
+                                    console.error(error);
+                                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server.\n" } } });
+                                });
                         });
                 }).catch(error => console.error(`Encryption error: ${error}`));
         });
