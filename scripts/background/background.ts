@@ -340,7 +340,7 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
             .then(userID => {
                 if (info.srcUrl) {
                     const tabId = tab!.id!;
-                    const reportedSrc = (/^data/.test(info.srcUrl) ? SparkMD5.hash(info.srcUrl) : info.srcUrl);
+                    const reportedSrc = SparkMD5.hash(info.srcUrl);
                     browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
                         content: {
                             src: reportedSrc,

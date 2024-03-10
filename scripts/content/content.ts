@@ -115,7 +115,7 @@ const revealImage = (event: Event): void => {
     blockedImagesSet.forEach(image => {
         if (image.recoverID === Number(recoverID)) {
             const reportID: number = Number(targetImage.getAttribute("gvp-report-id"));
-            const imageSource: string = (/^data/.test(image.blockedSource) ? SparkMD5.hash(image.blockedSource) : image.blockedSource);
+            const imageSource: string = SparkMD5.hash(image.blockedSource);
             const reportedByUser: boolean = reportedImages.some(report => report.source === imageSource);
             const tagsObject = JSON.parse(image.tags);
             const imageTagArray: string[] = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => tagsDisplayText.get(key)!);
@@ -196,7 +196,7 @@ const filterImage = (image: HTMLImageElement): void => {
     }
     const imageWidth = image.naturalWidth;
     const imageHeight = image.naturalHeight;
-    const imageSource: string = (/^data/.test(image.src) ? SparkMD5.hash(image.src) : image.src);
+    const imageSource: string = SparkMD5.hash(image.src);
     let isInFilters: boolean = false;
     const isReported = reportedImages.some(report => report.source === imageSource);
     let imageTags: string = "";
@@ -292,7 +292,7 @@ const fetchStorage = () => {
 
 const reportImage = (message: browserMessage): void => {
     const imageSourceBase64: string = message.data.content.base64src;
-    const imageSource: string = (/^data/.test(imageSourceBase64) ? SparkMD5.hash(imageSourceBase64) : imageSourceBase64);
+    const imageSource: string = SparkMD5.hash(imageSourceBase64);
     if (canvasSources.includes(imageSource)) {
         makeNotification("Cannot report that.");
         return;
