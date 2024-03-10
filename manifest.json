@@ -31,7 +31,6 @@
     "webRequest",
     "webRequestBlocking",
     "activeTab",
-    "windows",
     "storage",
     "contextMenus"
   ],
