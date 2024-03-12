@@ -130,11 +130,11 @@ dist
 .pnp.*
 
 # Project JS files
-scripts/**/*.js
+src/**/*.js
 ui/**/*.js
 
 #Filter token file
-scripts/tools/token.ts
+src/tools/token.ts
 
 # Visual Studio Code config files
 .vscode
