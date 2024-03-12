@@ -4,7 +4,7 @@
   "description": "Browser extension that blocks unpleasant content",
   "scripts": {
     "convert": "python convertresources.py",
-    "build": "find ./scripts \\( -path \"./scripts/tools\" \\) -prune -o -iname \"*.ts\" -exec sh -c 'bun build \"{}\" --outfile \"${0%.*}\".js' {} ';' && bun build ui/options/options.tsx ui/popup/popup.tsx --outdir ui --splitting",
+    "build": "find ./src \\( -path \"./src/tools\" \\) -prune -o -iname \"*.ts\" -exec sh -c 'bun build \"{}\" --outfile \"${0%.*}\".js' {} ';' && bun build ui/options/options.tsx ui/popup/popup.tsx --outdir ui --splitting",
     "dev": "bun run convert && bun run build && web-ext run --devtools",
     "dev-update": "bun x npm-check-updates -u"
   },

@@ -1,7 +1,7 @@
 import * as React from "react";
-import { whitelistedImage } from "../../scripts/tools/interfaces";
-import { Action } from "../../scripts/tools/messaging";
-import { tagsLookup, tagsDisplayText } from "../../scripts/content/tags";
+import { whitelistedImage } from "../../src/tools/interfaces";
+import { Action } from "../../src/tools/messaging";
+import { tagsLookup, tagsDisplayText } from "../../src/content/tags";
 
 const WhitelistElement = ({ thumbnail, source, setWhitelistedImages }: { thumbnail: string, source: string, setWhitelistedImages: CallableFunction }) => {
     return (

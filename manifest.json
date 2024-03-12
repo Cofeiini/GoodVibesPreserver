@@ -41,15 +41,14 @@
   ],
 
   "background": {
-    "scripts": ["scripts/background/background.js"],
+    "scripts": ["src/background/background.js"],
     "persistent": true
   },
 
   "content_scripts": [
     {
-      "exclude_matches": [],
       "matches": ["*://*/*"],
-      "js": ["scripts/content/content.js"]
+      "js": ["src/content/content.js"]
     }
   ]
 }

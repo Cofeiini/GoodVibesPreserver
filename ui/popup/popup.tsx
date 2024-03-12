@@ -2,7 +2,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import settingsIcon from "../../assets/settings-icon.svg";
 import powerIcon from "../../assets/power-icon.svg";
-import { Action } from "../../scripts/tools/messaging";
+import { Action } from "../../src/tools/messaging";
 
 const ReportedImages = () => {
     const [reportedImages, setReportedImages] = React.useState(0);
