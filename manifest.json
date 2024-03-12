@@ -5,7 +5,9 @@
   "description": "Extension meant to give the user a chill and nice experience while navigating the Internet",
 
   "icons": {
-    "48": "assets/gvplogo.png"
+    "48": "assets/logosmall.png",
+    "64": "assets/gvplogo64.png",
+    "128": "assets/gvplogo128.png"
   },
 
   "browser_action": {
