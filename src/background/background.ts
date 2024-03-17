@@ -1,7 +1,7 @@
-import { reportObject, imageFilter, feedbackObject, whitelistedImage, backoffObject } from "../tools/interfaces";
-import { messagingMap, browserMessage, Action } from "../tools/messaging";
+import { backoffObject, feedbackObject, imageFilter, reportObject, whitelistedImage } from "../tools/interfaces";
+import { Action, browserMessage, messagingMap } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
-import { stringToArrayBuffer, clearPEMFormat, encryptData } from "./encryption";
+import { clearPEMFormat, encryptData, stringToArrayBuffer } from "./encryption";
 import { tagsLookup } from "../content/tags";
 import { v4 as uuidv4 } from "uuid";
 import makeThumbnail from "./makethumbnail";
@@ -12,8 +12,6 @@ import gvpNotificationCSS from "../../htmlresources/gvp-notification-style.txt";
 import gvpRevealImageHTML from "../../htmlresources/gvp-revealimage.txt";
 import gvpRevealImageCSS from "../../htmlresources/gvp-revealimage-style.txt";
 
-//
-
 let imageFilters: imageFilter[] = [];
 let reportedImages: imageFilter[] = [];
 let votedImages: string[] = [];
@@ -21,7 +19,6 @@ let accessToken: string = "";
 let publicKey: CryptoKey;
 
 // Encryption
-
 const getUserID = async (): Promise<string> => {
     let { userID } = await browser.storage.sync.get();
     if (!userID) {
@@ -36,7 +33,6 @@ const accessTokenBackoff: backoffObject = {
     base: 50,
     cap: 10000,
 };
-
 const getAccessToken = async (): Promise<void> => {
     try {
         const userID = await getUserID();
@@ -68,8 +64,7 @@ const getRequestToken = async (): Promise<string> => {
         },
     });
     const authResponseJSON = await authResponse.json();
-    const requestToken = authResponseJSON.requestToken;
-    return requestToken;
+    return authResponseJSON.requestToken;
 };
 
 const publicKeyBackoff: backoffObject = {
@@ -77,41 +72,36 @@ const publicKeyBackoff: backoffObject = {
     base: 50,
     cap: 15000,
 };
-const fetchPublicKey = (): void => {
-    getRequestToken()
-        .then(requestToken => {
-            getUserID()
-                .then(userID => {
-                    fetch("https://goodvibespreserver-2acc4db954fc.herokuapp.com/publickey", {
-                        method: "GET",
-                        headers: {
-                            userid: userID,
-                            auth: requestToken,
-                        },
-                    })
-                        .then(response => response.json())
-                        .then(async responseJSON => {
-                            const publicKeyArrayBuffer: ArrayBuffer = stringToArrayBuffer(atob(clearPEMFormat(responseJSON.publicKey)));
-                            publicKey = await crypto.subtle.importKey("spki",
-                                publicKeyArrayBuffer,
-                                {
-                                    name: "RSA-OAEP",
-                                    hash: { name: "SHA-256" },
-                                },
-                                false,
-                                ["encrypt"]
-                            );
-                        })
-                        .catch(err => {
-                            console.error(err);
-                            publicKeyBackoff.calls++;
-                            const backoff = Math.min(publicKeyBackoff.cap, publicKeyBackoff.base * (2 ** publicKeyBackoff.calls));
-                            const jitter = Math.random();
-                            const sleep = backoff * jitter;
-                            setTimeout(fetchPublicKey, sleep);
-                        });
-                });
+const fetchPublicKey = () => {
+    getRequestToken().then(requestToken => {
+        getUserID().then(userID => {
+            fetch("https://goodvibespreserver-2acc4db954fc.herokuapp.com/publickey", {
+                method: "GET",
+                headers: {
+                    userid: userID,
+                    auth: requestToken,
+                },
+            }).then(response => response.json()).then(async responseJSON => {
+                const publicKeyArrayBuffer = stringToArrayBuffer(atob(clearPEMFormat(responseJSON.publicKey)));
+                publicKey = await crypto.subtle.importKey("spki",
+                    publicKeyArrayBuffer,
+                    {
+                        name: "RSA-OAEP",
+                        hash: { name: "SHA-256" },
+                    },
+                    false,
+                    ["encrypt"]
+                );
+            }).catch(err => {
+                console.error(err);
+                publicKeyBackoff.calls++;
+                const backoff = Math.min(publicKeyBackoff.cap, publicKeyBackoff.base * (2 ** publicKeyBackoff.calls));
+                const jitter = Math.random();
+                const sleep = backoff * jitter;
+                setTimeout(fetchPublicKey, sleep);
+            });
         });
+    });
 };
 
 const databaseBackoff: backoffObject = {
@@ -120,49 +110,48 @@ const databaseBackoff: backoffObject = {
     cap: 15000,
 };
 const fetchDatabase = () => {
-    getRequestToken()
-        .then(requestToken => {
-            getUserID()
-                .then(userID => {
-                    fetch("https://goodvibespreserver-2acc4db954fc.herokuapp.com/getimagefilters", {
-                        method: "GET",
-                        headers: {
-                            userid: userID,
-                            auth: requestToken,
-                        },
-                    })
-                        .then(response => response.json())
-                        .then(result => {
-                            imageFilters = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
-                            reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
-                            votedImages = result.userVotes;
-                            browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
-                            browser.tabs.query({})
-                                .then(tabs => {
-                                    tabs.forEach(tab => {
-                                        browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages, votedImages: votedImages, imageFilters: imageFilters } } });
-                                    });
-                                });
-                        })
-                        .catch(err => {
-                            console.error(err);
-                            databaseBackoff.calls++;
-                            const backoff = Math.min(databaseBackoff.cap, databaseBackoff.base * (2 ** databaseBackoff.calls));
-                            const jitter = Math.random();
-                            const sleep = backoff * jitter;
-                            setTimeout(fetchDatabase, sleep);
-                        });
+    getRequestToken().then(requestToken => {
+        getUserID().then(userID => {
+            fetch("https://goodvibespreserver-2acc4db954fc.herokuapp.com/getimagefilters", {
+                method: "GET",
+                headers: {
+                    userid: userID,
+                    auth: requestToken,
+                },
+            }).then(response => response.json()).then(result => {
+                reportedImages = result.reportedImages.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
+                browser.storage.local.set({ reportedImagesAmount: reportedImages.length });
+
+                votedImages = result.userVotes;
+                imageFilters = result.imageFilters.map(({ source, tags, id }: { source: string, tags: string, id: number }) => ({ source, tags, id }));
+                browser.tabs.query({}).then(tabs => {
+                    tabs.forEach(tab => {
+                        if (tab.url?.startsWith("about:")) {
+                            return;
+                        }
+
+                        browser.tabs.sendMessage(tab.id!, { action: Action.update_reported_images, data: { content: { reportedImages: reportedImages, votedImages: votedImages, imageFilters: imageFilters } } });
+                    });
                 });
+            }).catch(err => {
+                console.error(err);
+                databaseBackoff.calls++;
+                const backoff = Math.min(databaseBackoff.cap, databaseBackoff.base * (2 ** databaseBackoff.calls));
+                const jitter = Math.random();
+                const sleep = backoff * jitter;
+                setTimeout(fetchDatabase, sleep);
+            });
         });
+    });
 };
 
 browser.runtime.onInstalled.addListener(() => {
-    browser.storage.sync.get()
-        .then(syncStorage => {
-            if (!syncStorage.userID) {
-                browser.storage.sync.set({ userID: uuidv4() });
-            }
-        });
+    browser.storage.sync.get().then(syncStorage => {
+        if (!syncStorage.userID) {
+            browser.storage.sync.set({ userID: uuidv4() });
+        }
+    });
+
     browser.storage.local.set({
         whitelist: [] as string[],
         whitelistedImages: [] as whitelistedImage[],
@@ -182,17 +171,13 @@ browser.runtime.onInstalled.addListener(() => {
     });
 });
 
-//
-
-//
-
 //Messaging system
-
-const sendResources = async (message: browserMessage, sender: browser.runtime.MessageSender) => {
-    const senderId = sender.tab!.id!;
-    const localStorage = await browser.storage.local.get();
-    const tagSettings: string[] = tagsLookup.filter(tag => !localStorage[tag]);
+const sendResources = async (_message: browserMessage, sender: browser.runtime.MessageSender) => {
     const { sessionWhitelistedImages } = await browser.storage.session.get();
+    const localStorage = await browser.storage.local.get();
+    const tagSettings = tagsLookup.filter(tag => !localStorage[tag]);
+
+    const senderId = sender.tab!.id!;
     browser.tabs.sendMessage(senderId, {
         action: Action.send_resources,
         data: {
@@ -235,55 +220,49 @@ const bufferEncode = async (buffer: Uint8Array) => {
 const makeRequest = (message: browserMessage, sender: browser.runtime.MessageSender): void => {
     const route: string = message.data.content.route;
     const requestData: reportObject | feedbackObject = message.data.content.requestData;
-    getUserID()
-        .then(userID => {
-            requestData.userID = userID;
-            return getRequestToken();
-        })
-        .then((requestToken) => {
-            if (!publicKey) {
-                browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Error, please try again later.\n" } } });
-            }
-            encryptData(JSON.stringify(requestData), publicKey)
-                .then(encryptedData => {
-                    const cipherText = new Uint8Array(encryptedData);
-                    bufferEncode(cipherText)
-                        .then(encodedCipher => {
-                            fetch(`https://goodvibespreserver-2acc4db954fc.herokuapp.com/${route}`, {
-                                method: "POST",
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    "auth": requestToken,
-                                },
-                                body: JSON.stringify({ data: encodedCipher }),
-                            })
-                                .then(() => {
-                                    fetchDatabase();
-                                })
-                                .catch((error) => {
-                                    console.error(error);
-                                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server.\n" } } });
-                                });
-                        });
-                }).catch(error => console.error(`Encryption error: ${error}`));
-        });
+    getUserID().then(userID => {
+        requestData.userID = userID;
+        return getRequestToken();
+    }).then(requestToken => {
+        if (!publicKey) {
+            browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Error, please try again later.\n" } } });
+        }
+
+        encryptData(JSON.stringify(requestData), publicKey).then(encryptedData => {
+            const cipherText = new Uint8Array(encryptedData);
+            bufferEncode(cipherText).then(encodedCipher => {
+                fetch(`https://goodvibespreserver-2acc4db954fc.herokuapp.com/${route}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "auth": requestToken,
+                    },
+                    body: JSON.stringify({ data: encodedCipher }),
+                }).then(() => {
+                    fetchDatabase();
+                }).catch((error) => {
+                    console.error(error);
+                    browser.tabs.sendMessage(sender.tab!.id!, { action: Action.make_notification, data: { content: { notificationText: "Failed to communicate with server.\n" } } });
+                });
+            });
+        }).catch(error => console.error(`Encryption error: ${error}`));
+    });
 };
 
 const handleSetting = async (message: browserMessage) => {
-    const { [message.data.content.setting]: value } = await browser.storage.local.get();
-
     const { extensionOn } = await browser.storage.local.get();
     browser.contextMenus.update("gvp-report-image", {
         enabled: (message.data.content.setting === "extensionOn") ? !extensionOn : extensionOn,
     });
 
+    const { [message.data.content.setting]: value } = await browser.storage.local.get();
     browser.storage.local.set({ [message.data.content.setting]: !value });
-    browser.tabs.query({})
-        .then(tabs => {
-            tabs.forEach(tab => {
-                browser.tabs.sendMessage(tab!.id!, { action: Action.update_settings, data: { content: { [message.data.content.setting]: !value } } });
-            });
+
+    browser.tabs.query({}).then(tabs => {
+        tabs.forEach(tab => {
+            browser.tabs.sendMessage(tab!.id!, { action: Action.update_settings, data: { content: { [message.data.content.setting]: !value } } });
         });
+    });
 };
 
 const handleTagSetting = async (message: browserMessage) => {
@@ -324,10 +303,7 @@ browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.
     requestedAction(message, sender);
 });
 
-//
-
 // Report system
-
 browser.contextMenus.create({
     id: "gvp-report-image",
     title: "Report Image",
@@ -335,30 +311,52 @@ browser.contextMenus.create({
 });
 
 browser.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === "gvp-report-image") {
-        getUserID()
-            .then(userID => {
-                if (info.srcUrl) {
-                    const tabId = tab!.id!;
-                    const reportedSrc = SparkMD5.hash(info.srcUrl);
-                    browser.tabs.sendMessage(tabId, { action: Action.reporting_image, data: {
-                        content: {
-                            src: reportedSrc,
-                            userID: userID,
-                            reportCSS: gvpReportCSS,
-                            reportHTML: gvpReportHTML,
-                            base64src: info.srcUrl,
-                        },
-                    } });
-                }
-            });
+    if (info.menuItemId !== "gvp-report-image") {
+        return;
     }
-});
-//
 
-getAccessToken()
-    .then(() => {
-        browser.storage.session.set({ sessionWhitelistedImages: [] as string[] });
-        fetchPublicKey();
-        fetchDatabase();
+    getUserID().then(userID => {
+        const srcUrl = info.srcUrl;
+        if (!srcUrl) {
+            return;
+        }
+
+        const img = new Image();
+        img.setAttribute("crossOrigin", "anonymous");
+        img.onload = () => {
+            const imageWidth = img.naturalWidth;
+            const imageHeight = img.naturalHeight;
+            let imageData = srcUrl;
+
+            const canvas = document.createElement("canvas");
+            canvas.width = imageWidth;
+            canvas.height = imageHeight;
+            const context = canvas.getContext("2d");
+            if (context) {
+                context.drawImage(img, 0, 0);
+                imageData = canvas.toDataURL("image/png")!;
+            }
+
+            const tabId = tab!.id!;
+            const reportSrc = SparkMD5.hash(imageData);
+            browser.tabs.sendMessage(tabId, {
+                action: Action.reporting_image, data: {
+                    content: {
+                        src: reportSrc,
+                        userID: userID,
+                        reportCSS: gvpReportCSS,
+                        reportHTML: gvpReportHTML,
+                        base64src: srcUrl,
+                    },
+                },
+            });
+        };
+        img.src = srcUrl;
     });
+});
+
+getAccessToken().then(() => {
+    browser.storage.session.set({ sessionWhitelistedImages: [] as string[] });
+    fetchPublicKey();
+    fetchDatabase();
+});
