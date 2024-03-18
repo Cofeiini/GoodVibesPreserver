@@ -462,7 +462,11 @@ browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.
 });
 
 // Fetches filters as soon as the website finishes loading.
-document.addEventListener("DOMContentLoaded", fetchStorage);
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", fetchStorage);
+} else {
+    fetchStorage();
+}
 
 // Mutation observer setup.
 const mutationObserver = new MutationObserver(analyzeMutation);
