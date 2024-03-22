@@ -2,8 +2,9 @@ import SparkMD5 from "spark-md5";
 import { feedbackObject, imageFilter, reportObject, tagCheckboxes, whitelistedImage } from "../tools/interfaces";
 import { Action, browserMessage, messagingMap } from "../tools/messaging";
 import { generateFilteredImage } from "./filtercanvas";
-import { checkboxesTagsId, tagsDisplayText, tagsLookup } from "./tags";
+import { tagsDisplayText } from "./tags";
 import { getMaxZIndex, maxZIndex } from "./maxzindex";
+import { Mutex } from "../tools/mutex.ts";
 
 // HTML Resources
 let notificationHTMLString: string;
@@ -22,6 +23,8 @@ const canvasSources: string[] = [];
 
 // GVP notification
 let notificationTimeout: NodeJS.Timeout | null = null;
+
+const mutex = new Mutex();
 
 const makeNotification = (notificationText: string) => {
     document.getElementById("gvp-notification-shadow-root")?.remove();
@@ -75,7 +78,7 @@ const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
 
     const feedbackData = new feedbackObject();
     feedbackData.reportID = reportID;
-    tagsLookup.forEach(tag => {
+    [...tagsDisplayText.keys()].forEach(tag => {
         feedbackData[tag] = userVotes[tag].tagValue;
     });
     sendData(feedbackData, "reportfeedback");
@@ -84,6 +87,7 @@ const sendFeedback = (userVotes: tagCheckboxes, reportID: number): void => {
 const revealImage = (event: Event) => {
     event.preventDefault();
     event.stopPropagation();
+
     if (document.getElementById("gvp-reveal-image")) {
         return;
     }
@@ -115,6 +119,7 @@ const revealImage = (event: Event) => {
         }
 
         document.body.appendChild(shadowRoot);
+        document.body.style.overflow = "hidden";
 
         const tagsObject = JSON.parse(image.tags);
         const imageTagArray = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => tagsDisplayText.get(key)!);
@@ -130,6 +135,35 @@ const revealImage = (event: Event) => {
         const reportedByUser = reportedImages.some(report => report.source === imageSource);
         if (!votingEnabled || reportedByUser || votedImages.includes(imageSource)) {
             shadowDOM.getElementById("gvp-user-feedback")?.remove();
+        }
+
+        const feedback = shadowDOM.querySelector(".gvp-feedback-checkboxes");
+        if (feedback) {
+            [...tagsDisplayText.keys()].forEach(tag => {
+                const tagbox = document.createElement("div");
+                tagbox.className = "gvp-tagbox";
+
+                const label = document.createElement("label");
+                label.innerText = tagsDisplayText.get(tag)!;
+
+                const reveal = document.createElement("div");
+                reveal.className = "gvp-reveal-checkbox";
+
+                const positive = document.createElement("img");
+                positive.id = `gvp-positive-checkbox-${tag}`;
+                positive.className = "gvp-positive-checkbox";
+
+                const negative = document.createElement("img");
+                negative.id = `gvp-negative-checkbox-${tag}`;
+                negative.className = "gvp-negative-checkbox";
+
+                reveal.appendChild(positive);
+                reveal.appendChild(negative);
+                tagbox.appendChild(label);
+                tagbox.appendChild(reveal);
+
+                feedback.appendChild(tagbox);
+            });
         }
 
         const userVotes = new tagCheckboxes();
@@ -171,6 +205,7 @@ const revealImage = (event: Event) => {
                 sendFeedback(userVotes, reportID);
             }
 
+            document.body.style.overflow = "auto";
             shadowRoot.remove();
         });
         shadowDOM.getElementById("gvp-reveal-button")?.addEventListener("click", () => {
@@ -184,87 +219,92 @@ const revealImage = (event: Event) => {
             const whitelistCheckbox = (shadowDOM.getElementById("gvp-whitelist-checkbox")! as HTMLInputElement);
             browser.runtime.sendMessage({ action: Action.revealed_image, data: { content: { whitelist: whitelistCheckbox.checked, source: imageSource, base64src: image.blockedSource } } });
 
+            document.body.style.overflow = "auto";
             shadowRoot.remove();
         });
         shadowDOM.getElementById("gvp-reveal-preview")!.addEventListener("click", () => {
-            shadowDOM.getElementById("gvp-image-preview")!.style.filter = "none";
+            const preview = shadowDOM.getElementById("gvp-image-preview")!;
+            preview.style.filter = (preview.style.filter === "none") ? "blur(5px)" : "none";
         });
         shadowDOM.getElementById("gvp-close-reveal")?.addEventListener("click", () => {
+            document.body.style.overflow = "auto";
             shadowRoot.remove();
         });
     });
 };
 
-const filterImage = (image: HTMLImageElement) => {
-    if (!image.complete) {
-        return;
-    }
-
+const filterImage = async (image: HTMLImageElement) => {
     if (image.getAttribute("src-identifier") || image.id === "gvp-image-preview") {
         return;
     }
 
-    const imageWidth = image.naturalWidth;
-    const imageHeight = image.naturalHeight;
-    if ((imageWidth <= 48) || (imageHeight <= 48)) {
-        return;
-    }
-    let imageData = image.src;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = imageWidth;
-    canvas.height = imageHeight;
-    const context = canvas.getContext("2d");
-    if (context) {
-        context.drawImage(image, 0, 0);
-        imageData = canvas.toDataURL("image/png");
-    }
-    const imageSource = SparkMD5.hash(imageData);
-
-    let isInFilters = false;
-    let imageTags = "";
-    let reportID = 0;
-    if (imageFilters) {
-        const matchImage = imageFilters.find(img => img.source === imageSource);
-        if (matchImage) {
-            imageTags = matchImage.tags;
-            if (!Object.values(JSON.parse(imageTags)).some(tagValue => tagValue === 1)) {
-                return;
-            }
-            isInFilters = true;
-            reportID = matchImage.id;
-        }
-    }
-    if (imageTags === "") {
-        const matchImage = reportedImages.find(img => img.source === imageSource);
-        if (matchImage) {
-            imageTags = matchImage.tags;
-            reportID = matchImage.id;
-        }
-    }
-
-    if (imageTags) {
-        const tagsObject = JSON.parse(imageTags);
-        const imageTagArray = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => key);
-        if (imageTagArray.every(tag => ignoredTags.includes(tag))) {
+    const mutexRelease = await mutex.lock();
+    try {
+        const imageWidth = (image.naturalWidth > 0) ? image.naturalWidth : 300;
+        const imageHeight = (image.naturalHeight > 0) ? image.naturalHeight : 175;
+        if ((imageWidth <= 48) || (imageHeight <= 48)) {
             return;
         }
-    }
 
-    const isReported = reportedImages.some(report => report.source === imageSource);
-    if (!skippedSources.has(imageSource) && (isReported || isInFilters) && !imageWhitelist.includes(imageSource)) {
-        const filteredImage = generateFilteredImage(imageWidth, imageHeight);
-        canvasSources.push(SparkMD5.hash(filteredImage));
+        const response = await fetch(image.src);
+        const blob = await response.blob();
+        const imageData = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                resolve(event.target!.result! as string);
+            };
+            reader.readAsDataURL(blob);
+        });
+        const imageSource = SparkMD5.hash(imageData);
 
-        blockedImagesCounter++;
-        blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
+        let isInFilters = false;
+        let imageTags = "";
+        let reportID = 0;
+        if (imageFilters) {
+            const matchImage = imageFilters.find(img => img.source === imageSource);
+            if (matchImage) {
+                imageTags = matchImage.tags;
+                if (!Object.values(JSON.parse(imageTags)).some(tagValue => tagValue === 1)) {
+                    return;
+                }
+                isInFilters = true;
+                reportID = matchImage.id;
+            }
+        }
+        if (imageTags === "") {
+            const matchImage = reportedImages.find(img => img.source === imageSource);
+            if (matchImage) {
+                imageTags = matchImage.tags;
+                reportID = matchImage.id;
+            }
+        }
 
-        image.setAttribute("src-identifier", `${blockedImagesCounter}`);
-        image.setAttribute("gvp-report-id", `${reportID}`);
-        image.src = filteredImage;
-        image.addEventListener("click", revealImage);
+        if (imageTags) {
+            const tagsObject = JSON.parse(imageTags);
+            const imageTagArray = Object.keys(tagsObject).filter(key => tagsObject[key] > 0).map(key => key);
+            if (imageTagArray.every(tag => ignoredTags.includes(tag))) {
+                return;
+            }
+        }
 
-        browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: {} } });
+        const isReported = reportedImages.some(report => report.source === imageSource);
+        if (!skippedSources.has(imageSource) && (isReported || isInFilters) && !imageWhitelist.includes(imageSource)) {
+            const filteredImage = generateFilteredImage(imageWidth, imageHeight);
+            canvasSources.push(SparkMD5.hash(filteredImage));
+
+            blockedImagesCounter++;
+            blockedImagesSet.add({ blockedSource: image.src, recoverID: blockedImagesCounter, tags: imageTags });
+
+            image.setAttribute("src-identifier", `${blockedImagesCounter}`);
+            image.setAttribute("gvp-report-id", `${reportID}`);
+            image.src = filteredImage;
+            image.addEventListener("click", revealImage);
+            image.style.cursor = "pointer";
+
+            browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: {} } });
+        }
+    } finally {
+        mutexRelease();
     }
 };
 
@@ -352,7 +392,7 @@ const fetchStorage = () => {
 
 // Report system
 const reportImage = (message: browserMessage) => {
-    if (document.getElementById("gvp-alert") || document.getElementById("gvp-reveal-image")) {
+    if (document.querySelector("#gvp-alert, #gvp-reveal-image")) {
         return;
     }
 
@@ -390,7 +430,9 @@ const reportImage = (message: browserMessage) => {
     reportStyle.innerHTML = message.data.content.reportCSS;
     const shadowRoot = document.createElement("div");
     shadowRoot.id = "gvp-shadow-root";
+
     document.body.appendChild(shadowRoot);
+    document.body.style.overflow = "hidden";
 
     const shadowDOM = (shadowRoot as HTMLElement).attachShadow({ mode: "open" });
     shadowDOM.appendChild(reportDiv);
@@ -398,6 +440,25 @@ const reportImage = (message: browserMessage) => {
     shadowDOM.getElementById("gvp-background")!.style.zIndex = maxZIndex.toString();
     (shadowDOM.getElementById("gvp-report-preview-image") as HTMLImageElement)!.src = imageSourceBase64;
     (shadowDOM.getElementById("gvp-submit-button") as HTMLButtonElement).disabled = true;
+
+    const tagsSection = shadowDOM.querySelector(".gvp-tags-section")!;
+    [...tagsDisplayText.keys()].forEach(tag => {
+        const container = document.createElement("div");
+        container.className = "gvp-tag-container";
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.className = "gvp-checkbox";
+        input.id = `gvp-${tag}-checkbox`;
+
+        const label = document.createElement("label");
+        label.htmlFor = input.id;
+        label.innerText = tagsDisplayText.get(tag)!;
+
+        container.appendChild(input);
+        container.appendChild(label);
+        tagsSection.appendChild(container);
+    });
 
     let checkboxCounter = 0;
     const reportCheckboxes = shadowDOM.querySelectorAll(".gvp-checkbox");
@@ -410,17 +471,19 @@ const reportImage = (message: browserMessage) => {
     });
 
     shadowDOM.getElementById("gvp-close-report")?.addEventListener("click", () => {
+        document.body.style.overflow = "auto";
         shadowRoot.remove();
     });
     shadowDOM.getElementById("gvp-cancel-report")?.addEventListener("click", () => {
+        document.body.style.overflow = "auto";
         shadowRoot.remove();
     });
     shadowDOM.getElementById("gvp-submit-button")?.addEventListener("click", () => {
         const selectedTags: string[] = [];
-        checkboxesTagsId.forEach(tag => {
-            const checkbox = shadowDOM.getElementById(`${tag}`) as HTMLInputElement;
+        [...tagsDisplayText.keys()].forEach(tag => {
+            const checkbox = shadowDOM.getElementById(`gvp-${tag}-checkbox`) as HTMLInputElement;
             if (checkbox.checked) {
-                selectedTags.push(tag.split("-").at(1)!);
+                selectedTags.push(tag);
             }
         });
         sendData({
@@ -430,6 +493,7 @@ const reportImage = (message: browserMessage) => {
             timeStamp: new Date().toISOString(),
         }, "report");
 
+        document.body.style.overflow = "auto";
         shadowRoot.remove();
     });
 };

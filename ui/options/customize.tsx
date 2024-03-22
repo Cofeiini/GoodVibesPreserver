@@ -1,7 +1,7 @@
 import * as React from "react";
 import { whitelistedImage } from "../../src/tools/interfaces";
 import { Action } from "../../src/tools/messaging";
-import { tagsLookup, tagsDisplayText } from "../../src/content/tags";
+import { tagsDisplayText } from "../../src/content/tags";
 
 const WhitelistElement = ({ thumbnail, source, setWhitelistedImages }: { thumbnail: string, source: string, setWhitelistedImages: CallableFunction }) => {
     return (
@@ -69,7 +69,7 @@ const CustomizeSection = () => {
                 <div className="tags">
                     <label className="sub-title">Whitelist Tags</label>
                     {
-                        tagsLookup.map(tag => <Tag tagName={ tag } key={ tag }/>)
+                        [...tagsDisplayText.keys()].map(tag => <Tag tagName={ tag } key={ tag }/>)
                     }
                 </div>
             </div>

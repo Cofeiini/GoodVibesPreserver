@@ -2,7 +2,7 @@ import { backoffObject, feedbackObject, imageFilter, reportObject, whitelistedIm
 import { Action, browserMessage, messagingMap } from "../tools/messaging";
 import SparkMD5 from "spark-md5";
 import { clearPEMFormat, encryptData, stringToArrayBuffer } from "./encryption";
-import { tagsLookup } from "../content/tags";
+import { tagsDisplayText } from "../content/tags";
 import { v4 as uuidv4 } from "uuid";
 import makeThumbnail from "./makethumbnail";
 import gvpReportHTML from "../../htmlresources/gvp-report.txt";
@@ -175,7 +175,7 @@ browser.runtime.onInstalled.addListener(() => {
 const sendResources = async (_message: browserMessage, sender: browser.runtime.MessageSender) => {
     const { sessionWhitelistedImages } = await browser.storage.session.get();
     const localStorage = await browser.storage.local.get();
-    const tagSettings = tagsLookup.filter(tag => !localStorage[tag]);
+    const tagSettings = [...tagsDisplayText.keys()].filter(tag => !localStorage[tag]);
 
     const senderId = sender.tab!.id!;
     browser.tabs.sendMessage(senderId, {
@@ -321,37 +321,25 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
             return;
         }
 
-        const img = new Image();
-        img.setAttribute("crossOrigin", "anonymous");
-        img.onload = () => {
-            const imageWidth = img.naturalWidth;
-            const imageHeight = img.naturalHeight;
-            let imageData = srcUrl;
-
-            const canvas = document.createElement("canvas");
-            canvas.width = imageWidth;
-            canvas.height = imageHeight;
-            const context = canvas.getContext("2d");
-            if (context) {
-                context.drawImage(img, 0, 0);
-                imageData = canvas.toDataURL("image/png")!;
-            }
-
-            const tabId = tab!.id!;
-            const reportSrc = SparkMD5.hash(imageData);
-            browser.tabs.sendMessage(tabId, {
-                action: Action.reporting_image, data: {
-                    content: {
-                        src: reportSrc,
-                        userID: userID,
-                        reportCSS: gvpReportCSS,
-                        reportHTML: gvpReportHTML,
-                        base64src: srcUrl,
+        fetch(srcUrl).then(response => response.blob()).then(blob => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const tabId = tab!.id!;
+                const reportSrc = SparkMD5.hash(event.target!.result! as string);
+                browser.tabs.sendMessage(tabId, {
+                    action: Action.reporting_image, data: {
+                        content: {
+                            src: reportSrc,
+                            userID: userID,
+                            reportCSS: gvpReportCSS,
+                            reportHTML: gvpReportHTML,
+                            base64src: srcUrl,
+                        },
                     },
-                },
-            });
-        };
-        img.src = srcUrl;
+                });
+            };
+            reader.readAsDataURL(blob);
+        });
     });
 });
 
