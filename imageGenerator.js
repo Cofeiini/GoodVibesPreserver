@@ -78,12 +78,11 @@ nodeHtmlToImage({
         }
 
         await page.hover(`#gvp-${tagsDisplayText.keys().next().value}-checkbox + label`);
-        await page.$("#gvp-alert").then(node =>
-            node.screenshot({
-                path: "./report2.png",
-                omitBackground: true,
-            })
-        );
+        let node = await page.$("#gvp-alert");
+        await node.screenshot({
+            path: "./report2.png",
+            omitBackground: true,
+        });
 
         await page.hover("#gvp-submit-button");
     },
@@ -138,20 +137,18 @@ nodeHtmlToImage({
             }, tag, text);
         }
 
-        await page.$("#gvp-reveal-image").then(node =>
-            node.screenshot({
-                path: "./voting.png",
-                omitBackground: true,
-            })
-        );
+        let node = await page.$("#gvp-reveal-image");
+        await node.screenshot({
+            path: "./voting.png",
+            omitBackground: true,
+        });
 
         await page.hover("#gvp-whitelist-checkbox");
-        await page.$(".gvp-whitelist").then(node =>
-            node.screenshot({
-                path: "./whitelisting.png",
-                omitBackground: true,
-            })
-        );
+        node = await page.$(".gvp-whitelist");
+        await node.screenshot({
+            path: "./whitelisting.png",
+            omitBackground: true,
+        });
 
         await page.mouse.reset();
         await page.evaluate( () => {
