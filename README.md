@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="https://github.com/Cofeiini/GoodVibesPreserver/blob/clean-up-code/assets/gvplogo128.png"> 
+   <img src="./assets/gvplogo128.png"> 
 </p>
 <h1 align="center">
      Good Vibes Preserver
