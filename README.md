@@ -15,12 +15,12 @@ Furthermore, users can provide feedback on reported images utilizing a voting sy
 
 ### Select image and click on the Report Image context menu item.
 
-![Report Example](https://github.com/Cofeiini/GoodVibesPreserver/blob/clean-up-code/assets/report1.png)
+![Report Example](./assets/report1.png)
 
 ### Select the tags that the image matches.
 
-![Tags Example](https://github.com/Cofeiini/GoodVibesPreserver/blob/clean-up-code/assets/report2.png)
+![Tags Example](./assets/report2.png)
 
 ### The image will now be blocked.
 
-![Blocked Example](https://github.com/Cofeiini/GoodVibesPreserver/blob/clean-up-code/assets/report4.png)
+![Blocked Example](./assets/report4.png)
