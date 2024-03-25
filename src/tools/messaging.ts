@@ -52,7 +52,7 @@ export class messagingMap extends Map<Action, CustomFunction> {
             return super.get(key) as CustomFunction;
         }
         return () => {
-            console.log("Bad Messaging Map access.");
+            console.log(`Invalid parameter ${key}`);
         };
     }
 }

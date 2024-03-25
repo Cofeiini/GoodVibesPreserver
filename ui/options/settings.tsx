@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Action } from "../../scripts/tools/messaging";
+import { Action } from "../../src/tools/messaging";
 
 const CustomCheckbox = ({ settingName }: { settingName: string }) => {
     const [isChecked, setIsChecked] = React.useState(false);

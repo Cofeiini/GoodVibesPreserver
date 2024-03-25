@@ -1,38 +1,40 @@
-#gvp-notification-content
-{
-    display: flex;
+#gvp-notification-content {
     align-items: center;
-    gap: 5px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: rgb(197, 47, 47);
-}
-#gvp-notification
-{
     display: flex;
-    justify-content: center;
-    align-items: center;
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    width: 200px;
-    height: 120px;
-    background-color: rgb(53, 53, 53);
-    border-radius: 5px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    gap: 5px;
 }
 
-#gvp-close-notification
-{
+#gvp-notification {
+    align-items: center;
+    background-color: rgb(53, 53, 53);
+    border: solid black 2px;
+    border-radius: 5px;
+    display: flex;
+    height: 120px;
+    justify-content: center;
+    position: fixed;
+    right: 10px;
+    top: 10px;
+    width: 200px;
+}
+
+#gvp-close-notification {
+    aspect-ratio: 1/1;
+    background-color: white;
+    border: solid white 1px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    height: 20px;
     position: absolute;
     right: -5px;
     top: -5px;
-    border-radius: 20px;
-    font-weight: bold;
-    border: solid black 1px;
-    width: 20px;
-    height: 20px;
-    justify-content: center;
-    align-items: center;
-    background-color: white;
-    border: solid white 1px;
-    cursor: pointer;
+}
+
+#gvp-close-notification:hover {
+    height: 25px;
+    right: -8px;
+    top: -8px;
 }

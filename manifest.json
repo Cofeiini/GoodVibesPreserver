@@ -5,14 +5,19 @@
   "description": "Extension meant to give the user a chill and nice experience while navigating the Internet",
 
   "icons": {
-    "48": "assets/gvplogo.png"
+    "48": "assets/logosmall.png",
+    "64": "assets/gvplogo64.png",
+    "128": "assets/gvplogo128.png"
   },
 
   "browser_action": {
     "default_icon": {
-      "48": "assets/gvplogo.png"
+      "48": "assets/logosmall.png",
+      "64": "assets/gvplogo64.png",
+      "128": "assets/gvplogo128.png"
     },
-    "default_popup": "ui/popup/popup.html"
+    "default_popup": "ui/popup/popup.html",
+    "default_title": "Good Vibes Preserver"
   },
 
   "options_ui": {
@@ -31,20 +36,19 @@
     "webRequest",
     "webRequestBlocking",
     "activeTab",
-    "windows",
     "storage",
     "contextMenus"
   ],
 
   "background": {
-    "scripts": ["scripts/background/background.js"],
+    "scripts": ["src/background/background.js"],
     "persistent": true
   },
 
   "content_scripts": [
     {
       "matches": ["*://*/*"],
-      "js": ["scripts/content/content.js"]
+      "js": ["src/content/content.js"]
     }
   ]
 }
