@@ -1,10 +1,10 @@
 import nodeHtmlToImage from "node-html-to-image";
 import fs from "node:fs";
 import { tagsDisplayText } from "./src/content/tags";
-import target_image from "./assets/cat-animal-eyes-grey-54632.jpeg";
-import logo_small from "./assets/gvplogo64.png";
+import target_image from "./assets/help/cat-animal-eyes-grey-54632.jpeg";
+import logo_small from "./assets/logo/logosmall.png";
 
-const assetPath = "./testing";
+const assetPath = "./assets/help";
 
 const target_image_data = `data:image/png;base64,${new Buffer.from(fs.readFileSync(String(target_image))).toString("base64")}`;
 const logo_small_data = `data:image/png;base64,${new Buffer.from(fs.readFileSync(String(logo_small))).toString("base64")}`;

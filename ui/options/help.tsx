@@ -14,31 +14,31 @@ const HelpSection = () => {
                             <label className="help-item-text">
                                 First, you have to right click the image you want to report and select the "Report Image" item of the context menu.
                             </label>
-                            <img src="../../assets/report1.png" className="help-item-image"/>
+                            <img src="../../assets/help/report1.png" className="help-item-image"/>
                         </div>
                         <div>
                             <label className="help-item-text">
                                 The report pop-up will show up. You will have to choose the tags that you think that the image has by clicking the checkboxes.
                             </label>
-                            <img src="../../assets/report2.png" className="help-item-image"/>
+                            <img src="../../assets/help/report2.png" className="help-item-image"/>
                         </div>
                         <div>
                             <label className="help-item-text">
                                 The last step is clicking the "Submit Report" button and sending the report to the server.
                             </label>
-                            <img src="../../assets/report3.png" className="help-item-image"/>
+                            <img src="../../assets/help/report3.png" className="help-item-image"/>
                         </div>
                         <div>
                             <label className="help-item-text">
                             After that the image will be part of the server image filters and it will be blocked.
                             </label>
-                            <img src="../../assets/report4.png" className="help-item-image"/>
+                            <img src="../../assets/help/report4.png" className="help-item-image"/>
                         </div>
                         <div>
                             <label className="help-item-text">
                                 However, you can still reveal or whitelist the image by clicking the blocked image.
                             </label>
-                            <img src="../../assets/report5.png" className="help-item-image"/>
+                            <img src="../../assets/help/report5.png" className="help-item-image"/>
                         </div>
                     </div>
                     <hr/>
@@ -57,7 +57,7 @@ const HelpSection = () => {
                                     This is optional and you can just reveal/whitelist the image without having to give us feedback.
                                 </p>
                             </label>
-                            <img src="../../assets/voting.png" className="help-item-image"/>
+                            <img src="../../assets/help/voting.png" className="help-item-image"/>
                         </div>
                     </div>
                     <hr/>
@@ -68,7 +68,7 @@ const HelpSection = () => {
                                 The difference between revealing and whitelisting is that whitelisting an image will make that the extension won't
                                 block that image anymore unless you remove it from the whitelist section under "Customize".
                             </label>
-                            <img src="../../assets/whitelisting.png" className="help-item-image"/>
+                            <img src="../../assets/help/whitelisting.png" className="help-item-image"/>
                         </div>
                     </div>
                     <hr/>
