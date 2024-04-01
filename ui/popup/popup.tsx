@@ -1,7 +1,7 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import settingsIcon from "../../assets/settings-icon.svg";
-import powerIcon from "../../assets/power-icon.svg";
+import settingsIcon from "../../assets/icons/settings-icon.svg";
+import powerIcon from "../../assets/icons/power-icon.svg";
 import { Action } from "../../src/tools/messaging";
 
 const ReportedImages = () => {

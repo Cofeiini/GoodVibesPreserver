@@ -1,12 +1,12 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { SettingsSection } from "./settings";
-import optionsIcon from "../../assets/options-settings-icon.svg";
-import helpIcon from "../../assets/help-icon.svg";
-import privacyIcon from "../../assets/privacy-icon.svg";
-import customizeIcon from "../../assets/customize-icon.svg";
-import githubIcon from "../../assets/github-icon.svg";
-import contactIcon from "../../assets/contact-icon.svg";
+import optionsIcon from "../../assets/icons/options-settings-icon.svg";
+import helpIcon from "../../assets/icons/help-icon.svg";
+import privacyIcon from "../../assets/icons/privacy-icon.svg";
+import customizeIcon from "../../assets/icons/customize-icon.svg";
+import githubIcon from "../../assets/icons/github-icon.svg";
+import contactIcon from "../../assets/icons/contact-icon.svg";
 import CustomizeSection from "./customize";
 import PrivacySection from "./privacy";
 import HelpSection from "./help";

@@ -5,16 +5,16 @@
   "description": "Extension meant to give the user a chill and nice experience while navigating the Internet",
 
   "icons": {
-    "48": "assets/logosmall.png",
-    "64": "assets/gvplogo64.png",
-    "128": "assets/gvplogo128.png"
+    "48": "assets/logo/logosmall.png",
+    "64": "assets/logo/gvplogo64.png",
+    "128": "assets/logo/gvplogo128.png"
   },
 
   "browser_action": {
     "default_icon": {
-      "48": "assets/logosmall.png",
-      "64": "assets/gvplogo64.png",
-      "128": "assets/gvplogo128.png"
+      "48": "assets/logo/logosmall.png",
+      "64": "assets/logo/gvplogo64.png",
+      "128": "assets/logo/gvplogo128.png"
     },
     "default_popup": "ui/popup/popup.html",
     "default_title": "Good Vibes Preserver"
@@ -23,7 +23,7 @@
   "options_ui": {
     "page": "ui/options/options.html"
   },
-  
+
   "browser_specific_settings": {
     "gecko": {
       "id": "goodvibespreserver@github.com"

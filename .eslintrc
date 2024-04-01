@@ -7,7 +7,7 @@
   "extends": [
     "plugin:@typescript-eslint/recommended"
   ],
-  "ignorePatterns": ["**/*.js"],
+  "ignorePatterns": ["src/**/*.js", "ui/**/*.js"],
   "rules": {
     "@stylistic/array-bracket-spacing": ["error", "never"],
     "@stylistic/arrow-spacing": "error",

@@ -1,26 +1,38 @@
-<p align="center">
-   <img src="./assets/gvplogo128.png"> 
-</p>
-<h1 align="center">
-     Good Vibes Preserver
-</h1>
+<div align="center">
+    <img src="./assets/logo/gvplogo128.png" alt="Logo" />
+</div>
+<h1 align="center">Good Vibes Preserver</h1>
 
-Good Vibes Preserver is a browser extension designed to enhance user experience during web browsing.<br>
+This browser extension is designed to enhance user experience during web browsing by replacing undesirable content on web pages.
 
-It incorporates a comprehensive reporting system enabling users to report images along with specifying the corresponding tags.<br>
+It incorporates a comprehensive reporting system enabling users to report images along with specifying the corresponding tags.
 
-Furthermore, users can provide feedback on reported images utilizing a voting system, where they can cast positive or negative votes for each tag.<br>
+Users can provide feedback on reported images utilizing a voting system, where they can cast positive or negative votes for each tag.
 
+The content blocking can be customized by allowing certain tags or whitelisting specific content.
+
+---
 ## Image Reporting Example
+### 1. Select image and click on the Report Image context menu item
+![Report Example](./assets/help/report1.png)
 
-### Select image and click on the Report Image context menu item.
+### 2. Select the tags that apply for the image
+![Tags Example](./assets/help/report2.png)
 
-![Report Example](./assets/report1.png)
+### 3. The image will now be blocked
+![Blocked Example](./assets/help/report4.png)
 
-### Select the tags that the image matches.
+---
+## Building from source
+> [Bun](https://bun.sh) is used for managing packages and building the extension
 
-![Tags Example](./assets/report2.png)
+> [Firefox Developer Edition](https://www.mozilla.org/en-US/firefox/developer) is used for testing
 
-### The image will now be blocked.
+> [Python 3](https://www.python.org) is used for various tasks
 
-![Blocked Example](./assets/report4.png)
+### Getting started
+* Clone the repository
+* Open a terminal in the root of the source directory
+* Execute `bun install` to get the dependencies
+* Execute `bun run install` to generate an extension package for manually installing it as a temporary extension
+  * \[Alternative\] Execute `bun run dev` to compile and launch **Firefox Developer Edition** with the extension
