@@ -194,7 +194,7 @@ const sendResources = async (_message: browserMessage, sender: browser.runtime.M
                 votingEnabled: localStorage.votingEnabled,
                 localWhitelist: localStorage.whitelistedImages,
                 sessionWhitelist: sessionWhitelistedImages,
-                websiteWhitelsit: localStorage.websiteWhitelist,
+                websiteWhitelist: localStorage.websiteWhitelist,
                 tagSettings: tagSettings,
             },
         },
@@ -294,7 +294,7 @@ const updateRevealedImages = async (message: browserMessage) => {
 const updateSiteList = async (message: browserMessage) => {
     let { websiteWhitelist } = await browser.storage.local.get();
     const url = message.data.content.url;
-    if (websiteWhitelist.includes(url)) {
+    if ((websiteWhitelist as string[]).includes(url)) {
         websiteWhitelist = (websiteWhitelist as string[]).filter(site => site !== url);
     } else {
         websiteWhitelist.push(url);
