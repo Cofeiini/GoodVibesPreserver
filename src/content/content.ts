@@ -375,6 +375,11 @@ const setupStorage = (message: browserMessage) => {
     extensionOn = message.data.content.extensionOn;
     votingEnabled = message.data.content.votingEnabled;
     ignoredTags = message.data.content.tagSettings;
+    const websiteWhitelist = message.data.content.websiteWhitelist;
+    const currentUrl = window.location.href;
+    const urlParts = currentUrl.split("/");
+    const cleanUrl = urlParts.splice(0,3).join("/");
+    extensionOn = extensionOn ? !websiteWhitelist.includes(cleanUrl) : extensionOn;
 
     let localWhitelist = message.data.content.localWhitelist;
     if (localWhitelist) {
