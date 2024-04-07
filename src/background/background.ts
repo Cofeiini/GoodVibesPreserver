@@ -155,6 +155,7 @@ browser.runtime.onInstalled.addListener(() => {
     browser.storage.local.set({
         whitelist: [] as string[],
         whitelistedImages: [] as whitelistedImage[],
+        websiteWhitelist: [] as string[],
         extensionOn: true,
         votingEnabled: true,
         blockedImagesAmount: 0,
@@ -193,6 +194,7 @@ const sendResources = async (_message: browserMessage, sender: browser.runtime.M
                 votingEnabled: localStorage.votingEnabled,
                 localWhitelist: localStorage.whitelistedImages,
                 sessionWhitelist: sessionWhitelistedImages,
+                websiteWhitelist: localStorage.websiteWhitelist,
                 tagSettings: tagSettings,
             },
         },
@@ -289,6 +291,17 @@ const updateRevealedImages = async (message: browserMessage) => {
     }
 };
 
+const updateSiteList = async (message: browserMessage) => {
+    let { websiteWhitelist } = await browser.storage.local.get();
+    const url = message.data.content.url;
+    if ((websiteWhitelist as string[]).includes(url)) {
+        websiteWhitelist = (websiteWhitelist as string[]).filter(site => site !== url);
+    } else {
+        websiteWhitelist.push(url);
+    }
+    browser.storage.local.set({ websiteWhitelist: websiteWhitelist });
+}
+
 const messageMap = new messagingMap([
     [Action.get_resources, sendResources],
     [Action.make_request, makeRequest],
@@ -296,6 +309,7 @@ const messageMap = new messagingMap([
     [Action.update_blocked_images, updateBlockedImages],
     [Action.revealed_image, updateRevealedImages],
     [Action.setting_tag, handleTagSetting],
+    [Action.update_site_list, updateSiteList],
 ]);
 
 browser.runtime.onMessage.addListener((message: browserMessage, sender: browser.runtime.MessageSender) => {

@@ -13,6 +13,7 @@ export enum Action {
     revealed_image,
     update_settings,
     setting_tag,
+    update_site_list,
 }
 
 export type browserMessage = {
