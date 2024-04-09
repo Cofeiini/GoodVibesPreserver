@@ -300,7 +300,7 @@ const updateSiteList = async (message: browserMessage) => {
         websiteWhitelist.push(url);
     }
     browser.storage.local.set({ websiteWhitelist: websiteWhitelist });
-}
+};
 
 const messageMap = new messagingMap([
     [Action.get_resources, sendResources],
