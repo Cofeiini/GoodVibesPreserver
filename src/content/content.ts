@@ -288,7 +288,7 @@ const filterImage = async (image: HTMLImageElement) => {
         }
 
         const isReported = reportedImages.some(report => report.source === imageSource);
-        if (!skippedSources.has(imageSource) && (isReported || isInFilters) && !imageWhitelist.includes(imageSource)) {
+        if (!skippedSources.has(imageSource) && (isReported || isInFilters) && !imageWhitelist.includes(SparkMD5.hash(image.src))) {
             const filteredImage = generateFilteredImage(imageWidth, imageHeight);
             canvasSources.push(SparkMD5.hash(filteredImage));
 
@@ -300,7 +300,6 @@ const filterImage = async (image: HTMLImageElement) => {
             image.src = filteredImage;
             image.addEventListener("click", revealImage);
             image.style.cursor = "pointer";
-
             browser.runtime.sendMessage({ action: Action.update_blocked_images, data: { content: {} } });
         }
     } finally {
@@ -378,15 +377,15 @@ const setupStorage = (message: browserMessage) => {
     const websiteWhitelist = message.data.content.websiteWhitelist;
     const currentUrl = window.location.href;
     const urlParts = currentUrl.split("/");
-    const cleanUrl = urlParts.splice(0,3).join("/");
+    const cleanUrl = urlParts.splice(0, 3).join("/");
     extensionOn = extensionOn ? !websiteWhitelist.includes(cleanUrl) : extensionOn;
 
     let localWhitelist = message.data.content.localWhitelist;
+    const sessionWhitelist = message.data.content.sessionWhitelist;
     if (localWhitelist) {
         localWhitelist = (localWhitelist as whitelistedImage[]).map(image => image.source);
     }
-    imageWhitelist = message.data.content.sessionWhitelist.concat(localWhitelist);
-
+    imageWhitelist = sessionWhitelist.concat(localWhitelist ?? []);
     analyzeDOM(); // Call analyzeDOM() to run the first analysis of the website after filters are fetched. Some websites might not have mutations so this is needed.
 };
 
