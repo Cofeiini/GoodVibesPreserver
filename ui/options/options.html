@@ -154,8 +154,8 @@
 
 
     .menu-item-content {
-        width: 90%;
         height: 100%;
+        width: 90%;
         background-color: rgb(31,31,31);
         border-left: solid 1px grey;
         border-right: solid 1px grey;
@@ -171,7 +171,6 @@
         font-family: Arial, Helvetica, sans-serif;
         font-weight: bold;
         font-size: 40px;
-        box-shadow: 0 0 10px black;
         padding: 20px;
         border-radius: 80px;
         width: fit-content;
@@ -311,8 +310,9 @@
         background-color: rgb(20,20,20);
         box-shadow: 0 0 5px black;
         width: fit-content;
-        border-radius: 35px;
+        border-radius: 10px;
         border: solid 2px grey;
+        word-break: break-all;
     }
 
     .privacy-section p {
@@ -325,10 +325,12 @@
         flex-direction: column;
         gap: 50px;
     }
+
     .help-content {
         display: flex;
         flex-direction: column;
         gap: 30px;
+        width: 100%;
     }
 
     .help-items label{
@@ -368,9 +370,32 @@
         border: solid 2px grey;
     }
 
+    @media screen and (max-width:1360) {
+        .menu-main {
+            gap: 0;
+            justify-content: space-evenly;
+        }
+    }
+
     @media screen and (max-width: 480px) {
         .setting {
             font-size: 18px;
+        }
+
+        .menu-item-content {
+            padding: 5px;
+        }
+
+        .title {
+            font-size: 25px;
+        }
+
+        .help-section {
+            width: 80%;
+        }
+
+        .sub-title {
+            font-size: 20px;
         }
 
         .whitelist-thumbnail {

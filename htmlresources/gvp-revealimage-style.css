@@ -234,6 +234,8 @@ body {
     transform: translate(-50%);
     user-select: none;
     width: 450px;
+    max-width: 100vw;
+    box-sizing: border-box;
 }
 
 .gvp-reveal-title {
@@ -257,4 +259,5 @@ body {
     position: fixed;
     top: 0;
     width: 100%;
+    overflow-y: scroll;
 }
