@@ -281,6 +281,11 @@ const updateBlockedImages = async () => {
 const updateRevealedImages = async (message: browserMessage) => {
     if (message.data.content.whitelist) {
         const { whitelistedImages } = await browser.storage.local.get();
+        if (whitelistedImages) {
+            if ((whitelistedImages as whitelistedImage[]).some((entry) => entry.source === message.data.content.source)) {
+                return;
+            }
+        }
         const thumbnail = await makeThumbnail(message.data.content.base64src);
         whitelistedImages.push({ source: message.data.content.source, thumbnail: thumbnail });
         browser.storage.local.set({ whitelistedImages: whitelistedImages });
