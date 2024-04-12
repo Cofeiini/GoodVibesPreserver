@@ -78,7 +78,7 @@ const CustomizeSection = () => {
                     <label className="sub-title">Whitelisted Images</label>
                     {
                         (whitelistedImages as whitelistedImage[]).map((image: whitelistedImage) => (
-                            <WhitelistElement thumbnail={ image.thumbnail } source={ image.source } setWhitelistedImages={ setWhitelistedImages }/>
+                            <WhitelistElement thumbnail={ image.thumbnail } source= {image.source} key={ image.source } setWhitelistedImages={ setWhitelistedImages }/>
                         ))
                     }
                 </div>
