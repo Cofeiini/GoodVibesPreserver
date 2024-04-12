@@ -234,7 +234,7 @@ const revealImage = (event: Event) => {
 };
 
 const filterImage = async (image: HTMLImageElement) => {
-    if (image.getAttribute("src-identifier") || image.id === "gvp-image-preview") {
+    if (image.getAttribute("src-identifier") || image.id === "gvp-image-preview" || image.src === "") {
         return;
     }
 
