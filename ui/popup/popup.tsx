@@ -71,35 +71,35 @@ const DisableOnWebsite = () => {
     const [status, setStatus] = React.useState(false);
     React.useEffect(() => {
         const getStatus = async () => {
-            const { websiteWhitelist } = await browser.storage.local.get()
+            const { websiteWhitelist } = await browser.storage.local.get();
             const tabs: browser.tabs.Tab[] = await browser.tabs.query({ currentWindow: true, active: true });
             const urlParts = tabs[0].url?.split("/");
-            const cleanUrl = urlParts?.slice(0,3).join("/");
+            const cleanUrl = urlParts?.slice(0, 3).join("/");
             if (cleanUrl) {
                 setStatus((websiteWhitelist as string[]).includes(cleanUrl));
             }
-        }
+        };
         getStatus();
-    }, [])
+    }, []);
     return (
         <div className="gvp-disable-onsite-container">
             <label>Disable for this site</label>
             <div className="gvp-popup-power-button" style={{ backgroundColor: status ? "white" : "rgb(40,40,40)" }} onClick={ () => {
                 setStatus(!status);
                 browser.tabs.query({ currentWindow: true, active: true })
-                .then((tabs) => {
-                    const urlParts = tabs[0].url?.split("/");
-                    const cleanUrl = urlParts?.slice(0,3).join("/");
-                    browser.runtime.sendMessage({ action: Action.update_site_list, data: { content: { url: cleanUrl } } });
-                });
+                    .then((tabs) => {
+                        const urlParts = tabs[0].url?.split("/");
+                        const cleanUrl = urlParts?.slice(0, 3).join("/");
+                        browser.runtime.sendMessage({ action: Action.update_site_list, data: { content: { url: cleanUrl } } });
+                    });
             }}>
-            <div className="gvp-popup-status-indicator" style={{
-                transform: status ? "translateX(40px)" : "translateX(0px)",
-            }}></div>
+                <div className="gvp-popup-status-indicator" style={{
+                    transform: status ? "translateX(40px)" : "translateX(0px)",
+                }}></div>
             </div>
         </div>
     );
-}
+};
 
 const Popup = () => {
     return (
