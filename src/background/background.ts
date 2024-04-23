@@ -173,11 +173,13 @@ browser.runtime.onInstalled.addListener(() => {
 });
 
 //Messaging system
-const sendResources = async (_message: browserMessage, sender: browser.runtime.MessageSender) => {
+const sendResources = async (message: browserMessage, sender: browser.runtime.MessageSender) => {
+    if (accessToken !== "") {
+        fetchDatabase();
+    }
     const { sessionWhitelistedImages } = await browser.storage.session.get();
     const localStorage = await browser.storage.local.get();
     const tagSettings = [...tagsDisplayText.keys()].filter(tag => !localStorage[tag]);
-
     const senderId = sender.tab!.id!;
     browser.tabs.sendMessage(senderId, {
         action: Action.send_resources,
