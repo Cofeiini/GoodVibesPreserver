@@ -381,7 +381,7 @@ const setupStorage = (message: browserMessage) => {
     extensionOn = extensionOn ? !websiteWhitelist.includes(cleanUrl) : extensionOn;
 
     let localWhitelist = message.data.content.localWhitelist;
-    const sessionWhitelist = message.data.content.sessionWhitelist;
+    const sessionWhitelist = message.data.content.sessionWhitelist ?? [];
     if (localWhitelist) {
         localWhitelist = (localWhitelist as whitelistedImage[]).map(image => image.source);
     }
