@@ -90,7 +90,7 @@ const fetchPublicKey = () => {
                         hash: { name: "SHA-256" },
                     },
                     false,
-                    ["encrypt"]
+                    ["encrypt"],
                 );
             }).catch(err => {
                 console.error(err);
