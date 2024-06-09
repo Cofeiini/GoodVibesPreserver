@@ -8,7 +8,7 @@
     "build-ts": "find ./src \\( -path \"./src/tools\" \\) -prune -o -iname \"*.ts\" -exec sh -c 'bun build \"{}\" --outfile \"${0%.*}\".js --minify' {} ';'",
     "build-tsx": "bun build ./ui/options/options.tsx ./ui/popup/popup.tsx --outdir ./ui --splitting --minify",
     "build": "bun run build-py && bun run build-ts && bun run build-tsx",
-    "install": "bun run build && web-ext build -o",
+    "install": "bun run build && web-ext build --ignore-files CODEOWNERS README.md bun.lockb convertresources.py eslint.config.js imageGenerator.js package.json  package-lock.json tsconfig.json --overwrite-dest",
     "dev": "bun run build && web-ext run --devtools --firefox=deved --no-reload --arg=\"--devtools\" --start-url duckduckgo.com",
     "update-dev": "bun x npm-check-updates -u && bun install"
   },
@@ -17,7 +17,7 @@
   "maintainers": [
     "Franco Gargiulo <francogargiulo2004@gmail.com> (https://github.com/kralloie)"
   ],
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
