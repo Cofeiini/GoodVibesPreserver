@@ -144,6 +144,9 @@ ui/**/*.js
 # Extension builds
 web-ext-artifacts/
 
+# Source packages
+*.tar.gz
+
 # Assets SVGs chunks
 ui/**/*.svg
 
