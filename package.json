@@ -8,7 +8,8 @@
     "build-ts": "find ./src \\( -path \"./src/tools\" \\) -prune -o -iname \"*.ts\" -exec sh -c 'bun build \"{}\" --outfile \"${0%.*}\".js --minify' {} ';'",
     "build-tsx": "bun build ./ui/options/options.tsx ./ui/popup/popup.tsx --outdir ./ui --splitting --minify",
     "build": "bun run build-py && bun run build-ts && bun run build-tsx",
-    "install": "bun run build && web-ext build --ignore-files CODEOWNERS README.md bun.lockb convertresources.py eslint.config.js imageGenerator.js package.json  package-lock.json tsconfig.json --overwrite-dest",
+    "install": "bun run build && web-ext build --ignore-files CODEOWNERS README.md bun.lockb convertresources.py eslint.config.js imageGenerator.js package.json package-lock.json tsconfig.json --overwrite-dest",
+    "package": "tar -czf good-vibes-preserver-source.tar.gz assets htmlresources/*.html htmlresources/*.css htmlresources/*.ts src/background/*.ts src/content/*.ts src/tools ui/options/*.html ui/options/*.tsx ui/popup/*.html ui/popup/*.tsx eslint.config.js manifest.json package-lock.json package.json tsconfig.json README.md LICENSE convertresources.py && bun run install",
     "dev": "bun run build && web-ext run --devtools --firefox=deved --no-reload --arg=\"--devtools\" --start-url duckduckgo.com",
     "update-dev": "bun x npm-check-updates -u && bun install"
   },
