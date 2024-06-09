@@ -132,9 +132,6 @@ dist
 src/**/*.js
 ui/**/*.js
 
-#Filter token file
-src/tools/token.ts
-
 # Visual Studio Code config files
 .vscode
 
