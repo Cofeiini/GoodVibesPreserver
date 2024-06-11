@@ -113,7 +113,8 @@
     }
 
     .menu-item-selected {
-        background: white none;
+        background: none;
+        background-color: white;
     }
 
     .menu-item:hover:not(.menu-item-selected) {
@@ -253,7 +254,7 @@
         flex-direction: column;
         gap: 20px;
         position: relative;
-        padding: 20px 0 20px 0;
+        padding: 20px 0px 20px 0px;
     }
 
     .whitelist-thumbnail {
@@ -269,7 +270,7 @@
 
     .whitelist-thumbnail img {
         border-radius: 5px;
-        box-shadow: 0 10px 10px rgb(0,0,0,0.5);
+        box-shadow: 0px 10px 10px rgb(0,0,0,0.5);
     }
 
     .whitelist-button {
@@ -318,7 +319,7 @@
         font-size: 15px;
         font-family: Arial, Helvetica, sans-serif;
     }
-
+    
     .help-section {
         display: flex;
         flex-direction: column;
@@ -369,7 +370,7 @@
         border: solid 2px grey;
     }
 
-    @media screen and (max-width: 1360px) {
+    @media screen and (max-width:1360) {
         .menu-main {
             gap: 0;
             justify-content: space-evenly;
