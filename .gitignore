@@ -132,9 +132,6 @@ dist
 src/**/*.js
 ui/**/*.js
 
-#Filter token file
-src/tools/token.ts
-
 # Visual Studio Code config files
 .vscode
 
@@ -146,6 +143,9 @@ src/tools/token.ts
 
 # Extension builds
 web-ext-artifacts/
+
+# Source packages
+*.tar.gz
 
 # Assets SVGs chunks
 ui/**/*.svg
