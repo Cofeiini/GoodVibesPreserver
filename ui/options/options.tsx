@@ -60,8 +60,12 @@ const Menu = ({ itemsState, selectCallback }: { itemsState: menuItems, selectCal
                 <hr></hr>
             </div>
             <footer className="menu-footer">
-                <img src={contactIcon} className="menu-footer-item"></img>
-                <img src={githubIcon} className="menu-footer-item"></img>
+                <a href="mailto:francogargiulo2004@gmail.com">
+                    <img src={contactIcon} className="menu-footer-item"></img>
+                </a>
+                <img src={githubIcon} className="menu-footer-item" onClick={() => {
+                    browser.tabs.create({ url: "https://github.com/Cofeiini/GoodVibesPreserver"})
+                }}></img>
             </footer>
         </section>
     );
