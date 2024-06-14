@@ -121,7 +121,9 @@ const Popup = () => {
                     </section>
                     <section className="gvp-popup-links">
                         <div>
-                            <a href="">Github</a>
+                            <a href="" onClick={() => {
+                                browser.tabs.create({ url: "https://github.com/Cofeiini/GoodVibesPreserver"})
+                            }}>Github</a>
                         </div>
                         <div>
                             <a href="" onClick={() => {
