@@ -3,7 +3,7 @@
 </div>
 <h1 align="center">Good Vibes Preserver</h1>
 
-## Available as [Firefox Extension](https://addons.mozilla.org/es/firefox/addon/good-vibes-preserver/)
+## Available as [Firefox Extension](https://addons.mozilla.org/addon/good-vibes-preserver)
 
 This browser extension is designed to enhance user experience during web browsing by replacing undesirable content on web pages.
 
